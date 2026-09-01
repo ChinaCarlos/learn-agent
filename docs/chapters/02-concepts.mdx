@@ -1,0 +1,120 @@
+---
+title: 二、Agent 核心概念
+description: Agent、工具、状态图、MCP、A2A、RAG、Harness 心智模型与 Agent Loop Demo
+---
+
+import { PlanHeader, Callout, ConceptGrid, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { ChapterSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="第二章 · 心智模型"
+  items={[
+    { label: '课时', value: '6–8 h' },
+    { label: '难度', value: '中' },
+    { label: '产出', value: '概念卡' },
+    { label: '对应周', value: 'W1 全周' },
+  ]}
+/>
+
+<ChapterSwitcher current="02-concepts" />
+
+这是一切的目录。W1 通读一遍，后续每学一项回来标注完成。Agent 技术的混乱大多源于概念混用。
+
+## 学习目标
+
+1. 用一句话区分 MCP 与 A2A、Harness 与 Sandbox、Checkpoint 与 Memory。
+2. 能手画 Thought → Action → Observation 循环，并指出 interrupt 插在哪。
+3. 做出一张可打印的概念卡，后面 13 周只更新不重写。
+
+## 四层概念地图
+
+<ConceptGrid
+  items={[
+    { term: '基础层', meaning: 'LLM / Token、Prompt、Tool Use、Memory、Streaming、Output API。', analog: '员工的大脑、工单格式、工具箱。' },
+    { term: '编排层', meaning: 'Agent Loop、ToolLoopAgent、StateGraph、StateSchema、Durable Execution、DeltaChannel、HITL。', analog: '流程图引擎 + 工单系统。' },
+    { term: '多 Agent / 协议', meaning: 'Supervisor / Swarm、MCP 2026-07-28、A2A v1.0、Send/Command、DeepAgent、Harness。', analog: '会用工具 vs 会找同事 vs 办公室。' },
+    { term: '知识 / 工程 / 安全', meaning: 'RAG、GraphRAG 快照、rerank、Evals、Observability、Sandbox、AGENTS.md。', analog: '资料室、KPI、实验室。' },
+  ]}
+/>
+
+<Mermaid
+  title="一次任务在概念上怎么走"
+  chart={`
+flowchart TD
+  Goal["用户目标"] --> Prompt["Prompt / AGENTS.md"]
+  Prompt --> Loop["Agent Loop"]
+  Loop --> Tool{"需要外部能力?"}
+  Tool -->|工具| MCP["MCP 无状态调用"]
+  Tool -->|同事| A2A["A2A Task"]
+  Tool -->|知识| RAG["检索 + rerank + cite"]
+  MCP --> State["StateGraph + Checkpoint"]
+  A2A --> State
+  RAG --> State
+  State --> Hitl{"高风险写操作?"}
+  Hitl -->|是| Gate["Interrupt / needsApproval"]
+  Gate --> Human["人审批"]
+  Human --> State
+  Hitl -->|否| Sandbox["Sandbox 执行"]
+  Sandbox --> Obs["Trace / Eval / Cost"]
+`}
+/>
+
+## 关系一句话
+
+MCP 让 Agent 会用工具，A2A 让 Agent 会找同事，RAG 是给它看资料，Prompt / AGENTS.md 是教它做事，Harness 是给它办公室，Sandbox 是给它实验室，Evals 是给它 KPI。
+
+## 详细学习方案
+
+<Session when="90 min" title="第一遍：只读定义，不写代码">
+  把下面每个术语抄成「一句话 + 类比 + 映射技术」。不要展开官方文档，先求闭环。
+</Session>
+
+<Session when="90 min" title="第二遍：画自己的图">
+  合上本页，手画「一次 PRD 到合并」要经过哪些概念。对照上面的 Mermaid，缺了就补概念卡。
+</Session>
+
+<Session when="90 min" title="第三遍：最小循环 Demo">
+  实现下面的 toy loop。重点不是智能，而是你能指出每一步对应哪个概念。
+</Session>
+
+<Session when="60 min" title="易混词对打">
+  写出 6 组对比：MCP vs A2A、Memory vs Checkpoint、Harness vs Sandbox、Output API vs Prompt、Interrupt vs retry、RAG vs 长上下文。
+</Session>
+
+<Callout tone="warn" title="HITL 的隐藏坑">
+  resume 时节点从顶部重跑。interrupt 之前的副作用必须幂等，否则审批一次会重复打款/重复发邮件。
+</Callout>
+
+<DemoBox title="最小 Agent Loop：查天气再决定要不要带伞" goal="用 40 行 TypeScript 跑通 Thought → Action → Observation，不引入框架，先建立直觉。">
+
+```ts
+type WeatherTool = (city: string) => Promise<{ tempC: number; rain: boolean }>;
+
+const weather: WeatherTool = async city => {
+  // 真实项目里这里会变成 MCP tool
+  return { tempC: city === 'seattle' ? 9 : 24, rain: city === 'seattle' };
+};
+
+export async function shouldBringUmbrella(city: string) {
+  const thought = `需要 ${city} 的天气才能判断`;
+  const observation = await weather(city); // Action + Observation
+  const answer = observation.rain ? '带伞' : '不带伞';
+  return { thought, observation, answer };
+}
+```
+
+升级作业（仍在本章，不必上框架）：把 `weather` 的 JSON Schema 写出来，假装它是 MCP tool 描述；再写一个 `needsApproval`，当 `tempC < 0` 时暂停。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '概念卡覆盖基础 / 编排 / 协议 / 工程四层',
+    '能默写 MCP 与 A2A 的分工',
+    'toy loop 能跑，并注释每一步概念名',
+    '知道 MemorySaver 不能用于 serverless 生产',
+  ]}
+/>
+
+<PlanCTA href="/chapters/03-tech">下一章：技术选型</PlanCTA>

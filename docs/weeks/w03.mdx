@@ -1,0 +1,115 @@
+---
+title: W3 LangChain.js + 工具链
+description: 第三周学习方案：Runnable、Tools、Memory、needsApproval，以及 MCP 工具接入 Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 B · 第 3 周"
+  items={[
+    { label: '日期', value: '09-17 → 09-23' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'LangChain.js 1.2' },
+    { label: '里程碑', value: '记忆+MCP工具' },
+  ]}
+/>
+
+<WeekSwitcher current="w03" />
+
+用 LangChain.js 重构 W2 解析器：Runnable 串联、会话记忆、工具走 MCP 适配层。完整无状态 MCP 规范放到 W6，本周先会「当客户端用工具」。
+
+## 本周目标
+
+1. 理解 Runnable 组合，而不是再写一坨 if/else。
+2. 会话记忆可用：同一 thread 能记住项目名。
+3. 至少一个工具通过 MCP client 调用（即使 server 是本地 mock）。
+4. 对写操作挂上 `needsApproval` 或等价开关。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: '拆 Runnable', desc: 'parse | retrieve | reply' },
+    { title: '接 Memory', desc: '按 thread_id' },
+    { title: 'MCP client', desc: '调用本地 server' },
+    { title: '审批开关', desc: '写操作暂停' },
+  ]}
+/>
+
+<Mermaid
+  title="W3 工具链"
+  chart={`
+flowchart LR
+  User --> LC["LangChain Runnable"]
+  LC --> Mem["Memory per thread"]
+  LC --> MCP["MCP Client"]
+  MCP --> Repo["repo.search mock"]
+  LC --> Appr{"写操作?"}
+  Appr -->|是| Human["needsApproval"]
+  Appr -->|否| Out["结构化结果"]
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '积木层', body: 'LangChain.js 放 Tools / Memory / Retrievers。不要用它取代 LangGraph 状态机。' },
+    { title: '工具层', body: 'MCP client 先连本地 stdio/http mock。Gateway、审计、无状态头路由是 W6。' },
+    { title: '产品层', body: '聊天继承 W1，增加 thread 选择器。' },
+    { title: '安全雏形', body: '任何 update* 工具默认需要人批。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="用 Runnable 重写 parsePrd">
+  把 W2 函数变成可测试的 chain。中间结果要能 log。
+</Session>
+<Session when="Fri 2.5h" title="thread 记忆">
+  同一 thread 先说「项目叫 nova」，再问「项目名是什么」必须答 nova。换 thread 必须不知道。
+</Session>
+<Session when="Sat 4h" title="MCP client 调 mock server">
+  mock 一个 `repo.search`。重点是 tool 描述来自 MCP，而不是写死在 UI。
+</Session>
+<Session when="Sun 3h" title="写操作审批">
+  `repo.writeFile` 不得自动执行。UI 出现批准/拒绝。拒绝后记忆里要留下「用户拒绝」。
+</Session>
+
+<Callout tone="info" title="和 W6 的分工">
+  本周你是 MCP 客户端用户。W6 你是 MCP 服务端作者，要处理无状态、头路由、MRTR、CIMD。
+</Callout>
+
+<DemoBox title="带审批的写工具" goal="证明工具链里「读自动、写暂停」。后续 HITL 只是把这个开关接到图上。">
+
+```ts
+type ToolResult =
+  | { type: 'ok'; data: unknown }
+  | { type: 'needs_approval'; tool: string; args: unknown };
+
+export async function runTool(name: string, args: unknown): Promise<ToolResult> {
+  if (name.startsWith('write') || name.startsWith('update')) {
+    return { type: 'needs_approval', tool: name, args };
+  }
+  if (name === 'repo.search') {
+    return { type: 'ok', data: [{ path: 'apps/web/app/page.tsx', snippet: 'export default function Page()' }] };
+  }
+  throw new Error(`unknown_tool: ${name}`);
+}
+```
+
+验收：`runTool("writeFile", { path: "x" })` 返回 `needs_approval`；search 直接 ok。把这个函数接到聊天的 tool execute 里。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    'W2 解析器已迁到 Runnable',
+    '跨回复记忆按 thread 隔离',
+    '至少一个工具描述来自 MCP',
+    '写工具默认暂停',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w04">下一周：LangGraph 入门</PlanCTA>

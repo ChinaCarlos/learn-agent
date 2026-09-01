@@ -1,0 +1,114 @@
+---
+title: W8 RAG 与知识治理
+description: 第八周学习方案：chunk、embedding、rerank、citation、ACL、pgvector Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 C · 第 8 周"
+  items={[
+    { label: '日期', value: '10-22 → 10-28' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'RAG + rerank' },
+    { label: '里程碑', value: '带 source 的问答' },
+  ]}
+/>
+
+<WeekSwitcher current="w08" />
+
+现在才允许认真做 RAG。流程：chunk → embed → store → retrieve → rerank → cite。跨 tenant 检索必须为空。GraphRAG 快照是 stretch。
+
+## 本周目标
+
+1. 把本学习站的 markdown（或内部规范）入库 pgvector。
+2. 回答必须带 source 路径 + 片段。
+3. tenant A 的 embedding 对 tenant B 查询返回空。
+4. 使用 AI SDK `rerank()` 或等价重排，而不是只取向量 TopK。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: 'Chunk', desc: '按标题切' },
+    { title: 'Embed', desc: '写入 pgvector' },
+    { title: 'Retrieve', desc: '带 tenant 过滤' },
+    { title: 'Rerank', desc: 'rerank()' },
+    { title: 'Cite', desc: '答案绑 source' },
+  ]}
+/>
+
+<Mermaid
+  title="带 ACL 的 RAG"
+  chart={`
+flowchart TD
+  Q["用户问题 + tenant"] --> Ret["向量检索 WHERE tenant_id"]
+  Ret --> RR["rerank()"]
+  RR --> Prompt["context + 必须引用"]
+  Prompt --> Ans["答案 + citations[]"]
+  Ans --> Eval{"每条 citation 存在于检索结果?"}
+  Eval -->|否| Fail["拒绝回答"]
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '知识层', body: 'pgvector 与文档 ACL 表。对象存储放原文。' },
+    { title: '产品层', body: '答案下方列出 source，点击可跳原文。' },
+    { title: '编排', body: 'RAG 作为图上一个 retrieve 节点，不要在 UI 里直接查库。' },
+    { title: 'Stretch', body: 'Mastra GraphRAG serialize/deserialize，避免每次重建。时间不够可跳过。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="切片策略">
+  按 Markdown 二级标题切，chunk 400–800 token，重叠 10%。记下为什么不按固定字符硬切。
+</Session>
+<Session when="Fri 2.5h" title="入库 + tenant 列">
+  表字段：`id, tenant_id, path, chunk, embedding`。查询永远带 tenant。
+</Session>
+<Session when="Sat 4h" title="rerank + citation">
+  先取 20，重排留 4。prompt 要求「没有 citation 就说不知道」。
+</Session>
+<Session when="Sun 3h" title="跨租户红队">
+  用 tenant B 问 tenant A 的专有名词，期望检索为空。
+</Session>
+
+<Callout tone="warn" title="没有 citation 的流畅回答是失败">
+  RAG 的验收是可追溯，不是文笔。W12 eval 会专门打「幻觉 source」。
+</Callout>
+
+<DemoBox title="强制 citation 的拼装器" goal="即使还没接向量库，先把「无 source 不回答」写成死规则。">
+
+```ts
+type Hit = { path: string; text: string; score: number };
+
+export function buildRagPrompt(question: string, hits: Hit[]) {
+  if (hits.length === 0) {
+    return { abort: true, reason: 'no_hits_for_tenant' };
+  }
+  const context = hits.map((h, i) => `[#${i + 1} ${h.path}] ${h.text}`).join('\n');
+  return {
+    abort: false,
+    prompt: `只根据资料回答。每句事实后加 [#n]。资料不足就说不知道。\n${context}\n问题：${question}`,
+  };
+}
+```
+
+验收：`hits=[]` 必须 abort，不得调用模型（省钱且避免幻觉）。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '私有文档可问出带 path 的答案',
+    '跨 tenant 检索为空',
+    '使用了 rerank 或书面说明等价实现',
+    '无命中时不调用 LLM',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w09">下一周：DeepAgent</PlanCTA>

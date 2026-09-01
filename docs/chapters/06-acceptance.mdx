@@ -1,0 +1,115 @@
+---
+title: 六、最终验收标准
+description: 功能、可靠性与安全四类验收的学习方案，以及最小 eval gate Demo
+---
+
+import { PlanHeader, Callout, Arch, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { ChapterSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="第六章 · 验收"
+  items={[
+    { label: '课时', value: '3 h 设计 / W12 落地' },
+    { label: '难度', value: '高' },
+    { label: '产出', value: '验收清单' },
+    { label: '对应周', value: 'W12–W14' },
+  ]}
+/>
+
+<ChapterSwitcher current="06-acceptance" />
+
+14 周末必须全部可演示。本章先把验收变成测试用例，再倒推每周该积累什么证据。
+
+## 学习目标
+
+1. 把「功能 / 可靠 / 安全」拆成可勾选的演示脚本。
+2. 理解四类验收：Demo、恢复、隔离、红队。
+3. 先写一个会失败的 eval gate，避免 W12 才第一次接触评测。
+
+## 验收流
+
+<Mermaid
+  title="演示当天怎么过关"
+  chart={`
+flowchart TD
+  D["功能 Demo<br/>PRD → PR"] --> G["4 个 gate 可拒绝"]
+  G --> R["随机杀 worker<br/>从 checkpoint 恢复"]
+  R --> T["Tenant A 看不到 B"]
+  T --> E["CI 复现 eval"]
+  E --> S["注入/越权红队失败"]
+  S --> O["trace/cost/rollback/runbook"]
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '功能验收', body: 'PRD 输入到 PR/候选变更；每阶段 JSON Schema artifact；4 个 gate 可批准/拒绝；MCP+A2A ≥3 角色 trace；DeepAgent + RAG 演示。' },
+    { title: '可靠性', body: '随机停止 worker → 最近 checkpoint 继续；离线+在线 eval 可在 CI 复现。' },
+    { title: '安全', body: 'Tenant 隔离；MCP 审计；Sandbox egress；secret；prompt injection 红队。' },
+    { title: '运营', body: 'trace / metric / log / cost / rollback / runbook 完整。' },
+  ]}
+/>
+
+## 详细学习方案
+
+<Session when="50 min" title="把验收写成演示剧本">
+  每条验收写：前置数据、点击哪、期望看到什么、失败长什么样。W14 直接照着念。
+</Session>
+
+<Session when="40 min" title="给每周分配证据">
+  例如「kill worker 恢复」必须在 W5 留下录屏或日志；「跨 tenant 为空」必须在 W8 留下测试。不要堆到最后一周。
+</Session>
+
+<Session when="60 min" title="先做一个会红的 eval">
+  下面 Demo 故意让 CI 失败。你会在 W12 把它接到真实数据集。
+</Session>
+
+<Callout tone="ok" title="企业级分界线">
+  保四弃多：checkpoint · approval · eval gate · sandbox。这四项过不了，就还不是企业级。
+</Callout>
+
+<DemoBox title="最小 eval gate：JSON 契约不通过就失败" goal="演示「评测不是看感觉」。W12 会把 LLM-as-judge 接到同一函数。">
+
+```ts
+import { z } from 'zod';
+
+const Artifact = z.object({
+  stories: z.array(z.object({
+    id: z.string(),
+    ac: z.array(z.string()).min(1),
+  })).min(1),
+  citations: z.array(z.string()).default([]),
+});
+
+export function evalGate(input: unknown) {
+  const parsed = Artifact.safeParse(input);
+  if (!parsed.success) {
+    return { pass: false, reason: 'schema', issues: parsed.error.issues };
+  }
+  const missingAc = parsed.data.stories.filter(s => s.ac.length === 0);
+  if (missingAc.length) {
+    return { pass: false, reason: 'empty_ac' };
+  }
+  return { pass: true };
+}
+
+if (!evalGate({ stories: [] }).pass) {
+  throw new Error('eval gate failed');
+}
+```
+
+验收：空 stories 必须抛错。把它写成 `pnpm test:eval`，W12 再换成 30+ golden set。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '功能/可靠/安全/运营四类都有演示剧本',
+    '4 个 P0 有对应周次',
+    'evalGate 能让进程以非零码退出',
+    '验收项里没有「感觉还行」这种句子',
+  ]}
+/>
+
+<PlanCTA href="/chapters/07-strategy">下一章：学习策略</PlanCTA>

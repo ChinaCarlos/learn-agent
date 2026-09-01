@@ -1,0 +1,111 @@
+---
+title: W4 LangGraph.js 编排入门
+description: 第四周学习方案：StateGraph、StateSchema、条件路由、Send 并行，以及三节点图 Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 B · 第 4 周"
+  items={[
+    { label: '日期', value: '09-24 → 09-30' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'LangGraph.js 1.2' },
+    { label: '里程碑', value: '三节点可视化' },
+  ]}
+/>
+
+<WeekSwitcher current="w04" />
+
+从「一次 LLM 调用」升级到「有向图」。本周用 MemorySaver 即可，持久化留给 W5。重点是状态、边、条件、并行 fanout。
+
+## 本周目标
+
+1. 用 StateGraph 实现 Analyst → Specifier → Planner 三节点。
+2. 条件路由：PRD 过短时回到 Analyst，而不是硬往下走。
+3. 用 Send 对用户故事并行打分（fanout）。
+4. 页面用 React Flow 或简表展示每步 state diff。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: '定义 State', desc: 'StateSchema / Annotation' },
+    { title: '三节点', desc: '分析/故事/计划' },
+    { title: '条件边', desc: '质量闸门' },
+    { title: 'Send fanout', desc: '并行子任务' },
+    { title: '可视化', desc: '逐步 diff' },
+  ]}
+/>
+
+<Mermaid
+  title="三节点主图"
+  chart={`
+flowchart TD
+  Start([START]) --> Analyst
+  Analyst --> Q{"PRD 是否足够具体?"}
+  Q -->|否| Analyst
+  Q -->|是| Specifier
+  Specifier --> Fanout["Send 并行打分每条 story"]
+  Fanout --> Planner
+  Planner --> End([END])
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '编排内核（本周主战场）', body: '图定义放 packages/agent。不要写进 React 组件。' },
+    { title: '产品层', body: '逐步拉取 state，画节点高亮。SSE 可复用 W1。' },
+    { title: '状态契约', body: '字段与 W2 schema 对齐：prd、analysis、stories、plan。' },
+    { title: '先不持久化', body: 'MemorySaver 仅本地。注释标明生产必须换 PostgresSaver。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="State 与两节点">
+  先跑通 [第 3 章 Demo](/chapters/03-tech)，再加第三节点 Planner。
+</Session>
+<Session when="Fri 2.5h" title="条件路由">
+  `analysis.length < 40` 回 Analyst，最多 2 次，防止无限循环（呼应第 4 章回环规则）。
+</Session>
+<Session when="Sat 4h" title="Send 并行">
+  对 stories 数组 fanout 一个 `score` 节点，再汇总。对比串行耗时。
+</Session>
+<Session when="Sun 3h" title="可视化里程碑">
+  每步显示：进入节点名、state 哪些键变了。录屏作为 W4 验收。
+</Session>
+
+<Callout tone="warn" title="条件边一定要有预算">
+  没有 max_loop 的「质量不够就重来」会把账单打爆。第 8 章的熔断思想这里就要用上。
+</Callout>
+
+<DemoBox title="带循环上限的条件路由" goal="三节点图的关键不是 LLM，而是图自己能拒绝往下走。">
+
+```ts
+type S = { prd: string; analysis: string; loops: number };
+
+export function routeAfterAnalyze(state: S): 'analyze' | 'specify' {
+  if (state.analysis.length < 40 && state.loops < 2) {
+    return 'analyze';
+  }
+  return 'specify';
+}
+```
+
+把它接到 `addConditionalEdges("analyze", routeAfterAnalyze, { analyze: "analyze", specify: "specify" })`。验收：输入「做个东西」会重试；输入完整 PRD 一次通过。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '三节点图可 invoke',
+    '条件回环有上限',
+    'Send fanout 至少并行 2 条 story',
+    'UI 能看出当前节点',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w05">下一周：Durable Execution</PlanCTA>

@@ -1,0 +1,17 @@
+[
+  { "type": "file", "name": "index", "label": "14 周总览" },
+  { "type": "file", "name": "w01", "label": "W1 概念扫盲" },
+  { "type": "file", "name": "w02", "label": "W2 Prompt 与输出" },
+  { "type": "file", "name": "w03", "label": "W3 LangChain.js" },
+  { "type": "file", "name": "w04", "label": "W4 LangGraph 入门" },
+  { "type": "file", "name": "w05", "label": "W5 Durable Execution" },
+  { "type": "file", "name": "w06", "label": "W6 MCP 新规范" },
+  { "type": "file", "name": "w07", "label": "W7 A2A 与多 Agent" },
+  { "type": "file", "name": "w08", "label": "W8 RAG 知识治理" },
+  { "type": "file", "name": "w09", "label": "W9 DeepAgent" },
+  { "type": "file", "name": "w10", "label": "W10 Harness" },
+  { "type": "file", "name": "w11", "label": "W11 Sandbox 安全" },
+  { "type": "file", "name": "w12", "label": "W12 Evals 与 CI" },
+  { "type": "file", "name": "w13", "label": "W13 可观测性" },
+  { "type": "file", "name": "w14", "label": "W14 生产化复盘" }
+]

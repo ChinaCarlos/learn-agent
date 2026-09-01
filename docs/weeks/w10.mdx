@@ -1,0 +1,127 @@
+---
+title: W10 Harness 运行时与控制面
+description: 第十周学习方案：生命周期、队列、并发、LangGraph Server、TokenCostControl Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 D · 第 10 周"
+  items={[
+    { label: '日期', value: '11-05 → 11-11' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'Harness' },
+    { label: '里程碑', value: '队列+并发+成本' },
+  ]}
+/>
+
+<WeekSwitcher current="w10" />
+
+Harness 是办公室：生命周期、队列、并发、资源、隔离、观测。映射到 LangGraph Server / LangSmith Deployment / Mastra Server。本周把 W9 的循环从「脚本」变成「平台」。
+
+## 本周目标
+
+1. 后台 run：HTTP 返回 runId，不等待图结束。
+2. 队列 + 并发限制（例如全局 2 个 worker）。
+3. 状态查询 API：queued / running / interrupted / done / failed。
+4. TokenCostControl：超过上限拒绝新 run。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: 'Enqueue', desc: '写入队列' },
+    { title: 'Lease', desc: 'worker 抢锁' },
+    { title: 'Execute', desc: '跑图' },
+    { title: 'Heartbeat', desc: '可被查询' },
+    { title: 'Cost cap', desc: '拒绝新任务' },
+  ]}
+/>
+
+<Mermaid
+  title="控制面"
+  chart={`
+flowchart LR
+  API["POST /runs"] --> Q["Queue"]
+  Q --> W1["Worker 1"]
+  Q --> W2["Worker 2"]
+  W1 --> CK["PostgresSaver"]
+  W2 --> CK
+  API2["GET /runs/:id"] --> CK
+  Cost["TokenCostControl"] --> API
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '控制面', body: 'Fastify：创建、查询、取消、审批回调。OIDC 可先 mock。' },
+    { title: '数据面', body: 'worker 进程只消费队列，不对外暴露。' },
+    { title: '资源', body: '并发、超时、成本上限。超时用 retry policy 模拟 Python-only timeout。' },
+    { title: '部署形态', body: '能解释 LangGraph Server 帮你省了哪些轮子；本周允许自建最小版。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="run 表与 API">
+  `runs(id, tenant, status, cost_usd, thread_id)`。POST 只插入 queued。
+</Session>
+<Session when="Fri 2.5h" title="worker 循环">
+  抢一条 queued → running → 调 graph。崩溃回到 queued 或 failed（结合 W5）。
+</Session>
+<Session when="Sat 4h" title="并发=2 压测">
+  连续丢 5 个任务，同时 running 不得超过 2。多余的保持 queued。
+</Session>
+<Session when="Sun 3h" title="成本上限">
+  租户日预算用尽后 POST 返回 429。复用 BudgetGuard。
+</Session>
+
+<Callout tone="ok" title="本周完成后">
+  你已经有「可托管 Agent」的最小形状。后面的沙箱、eval、OTel 都是往这个控制面挂插件。
+</Callout>
+
+<DemoBox title="并发槽位 + 成本拒绝" goal="Harness 最容易自测的两件事：同时跑几个、钱够不够。">
+
+```ts
+export class Harness {
+  constructor(
+    private readonly concurrency: number,
+    private running = 0,
+    private readonly dailyUsd: number,
+    private spent = 0,
+  ) {}
+
+  admit(estimatedUsd: number) {
+    if (this.spent + estimatedUsd > this.dailyUsd) {
+      return { ok: false as const, code: 429, error: 'cost_cap' };
+    }
+    if (this.running >= this.concurrency) {
+      return { ok: false as const, code: 202, error: 'queued' };
+    }
+    this.running += 1;
+    this.spent += estimatedUsd;
+    return { ok: true as const, code: 200 };
+  }
+
+  finish() {
+    this.running = Math.max(0, this.running - 1);
+  }
+}
+```
+
+验收：concurrency=1 时第二次 `admit` 得 queued；日预算用尽得 429。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    'POST /runs 立即返回 runId',
+    'GET 能查到状态变化',
+    '并发上限生效',
+    '超成本拒绝新 run',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w11">下一周：Sandbox 与安全</PlanCTA>

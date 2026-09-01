@@ -1,0 +1,120 @@
+---
+title: W7 A2A v1.0 + 多 Agent
+description: 第七周学习方案：签名 Agent Card、三种绑定、supervisor/swarm、三角色协作 Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 C · 第 7 周"
+  items={[
+    { label: '日期', value: '10-15 → 10-21' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'A2A v1.0' },
+    { label: '里程碑', value: '3 角色 trace' },
+  ]}
+/>
+
+<WeekSwitcher current="w07" />
+
+MCP 在 Agent 内部连工具，A2A 在 Agent 之间通信。生产两者都用。A2A v1.0 已稳定，直接用官方 JS SDK，不必学 v0.3。
+
+## 本周目标
+
+1. 发布至少 2 张 Agent Card（可先无 JWS，再补签名）。
+2. 跑通 Task 生命周期：submitted → working → completed。
+3. supervisor 模式完成 Analyst / Specifier / Developer 三角色。
+4. 对比 swarm 的成本与质量（时间不够可把 swarm 标为 stretch）。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: 'Agent Card', desc: '能力自描述' },
+    { title: '一种绑定', desc: '先 HTTP+JSON-RPC' },
+    { title: 'Supervisor', desc: 'handoff' },
+    { title: '预算', desc: '角色次数上限' },
+  ]}
+/>
+
+<Mermaid
+  title="Supervisor 协作"
+  chart={`
+flowchart TD
+  User --> Sup["Supervisor"]
+  Sup --> A["Analyst Agent"]
+  A --> Sup
+  Sup --> S["Specifier Agent"]
+  S --> Sup
+  Sup --> D["Developer Agent"]
+  D --> MCP["MCP tools"]
+  Sup --> Trace["一条 parent trace"]
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '协议层', body: '数据模型 / 抽象操作 / 协议绑定 三层。绑定可独立版本号。' },
+    { title: '编排', body: 'createSupervisor / createHandoffTool。每个子 Agent 仍是一个 LangGraph。' },
+    { title: '安全', body: '签名 Card（JWS）、OAuth Device Code + PKCE。本周可用静态信任列表降级。' },
+    { title: '观测', body: '必须能在一条 trace 里看到三次角色切换。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="写 Agent Card JSON">
+  字段：name、skills、bindings、auth。先 HTTP+JSON-RPC 一种绑定。
+</Session>
+<Session when="Fri 2.5h" title="Task 生命周期">
+  用 SDK 创建 task，轮询状态。不要自己发明状态机。
+</Session>
+<Session when="Sat 4h" title="三角色 supervisor">
+  角色只通过 A2A 或 handoff 通信，禁止直接函数互调（那不算多 Agent）。
+</Session>
+<Session when="Sun 3h" title="预算 + 对比">
+  每角色最多 4 次 LLM。可选：同一 PRD 用 swarm 跑一遍，记下 token。时间不够就跳过 swarm。
+</Session>
+
+<Callout tone="info" title="和 MCP 对照实验">
+  若概念仍混：让 Developer 用 MCP 搜代码，让 Supervisor 用 A2A 问 Architect。一次任务里两种协议都出现。
+</Callout>
+
+<DemoBox title="最小 Supervisor 路由" goal="演示「找同事」而不是「再调一个函数」。">
+
+```ts
+type AgentId = 'analyst' | 'specifier' | 'developer';
+
+export function nextAgent(task: { hasAnalysis: boolean; hasStories: boolean }): AgentId {
+  if (!task.hasAnalysis) return 'analyst';
+  if (!task.hasStories) return 'specifier';
+  return 'developer';
+}
+
+export async function handoff(from: AgentId, to: AgentId, payload: unknown) {
+  return {
+    protocol: 'A2A',
+    binding: 'jsonrpc',
+    from,
+    to,
+    payload,
+  };
+}
+```
+
+验收：缺 analysis 时不得跳到 developer。把 `handoff` 的返回对象打进日志，这就是「协作 trace」的胚胎。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '至少 2 张 Agent Card',
+    'Task 能走到 completed',
+    '日志里有 3 个不同 agent id',
+    '每角色有次数上限',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w08">下一周：RAG 知识治理</PlanCTA>

@@ -1,0 +1,12 @@
+[
+  {
+    "text": "方案章节",
+    "link": "/chapters/",
+    "activeMatch": "/chapters/"
+  },
+  {
+    "text": "每周计划",
+    "link": "/weeks/",
+    "activeMatch": "/weeks/"
+  }
+]

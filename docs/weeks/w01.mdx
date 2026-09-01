@@ -1,0 +1,121 @@
+---
+title: W1 概念扫盲 + Agent 直觉
+description: 第一周学习方案：概念全图、AI SDK v7 聊天与工具 UI、Streaming、token/cost 展示 Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 A · 第 1 周"
+  items={[
+    { label: '日期', value: '09-03 → 09-09' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'AI SDK v7' },
+    { label: '里程碑', value: '聊天+工具+cost' },
+  ]}
+/>
+
+<WeekSwitcher current="w01" />
+
+先建立直觉，再碰编排框架。本周禁止引入 LangGraph、RAG、MCP server。
+
+## 本周目标
+
+1. 读完 [第 2 章概念地图](/chapters/02-concepts)，做成自己的卡片。
+2. 用 Next.js + AI SDK v7 做出带工具调用的聊天页。
+3. 界面上能看到 streaming 文本、tool 名称、token 与粗略 cost。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: '概念卡', desc: '只读不写代码' },
+    { title: '直连模型', desc: 'generateText' },
+    { title: '加 Tool', desc: 'Zod 定义' },
+    { title: '流式 UI', desc: 'SSE 渲染' },
+    { title: '展示 cost', desc: 'usage 入账' },
+  ]}
+/>
+
+<Mermaid
+  title="W1 运行时"
+  chart={`
+flowchart LR
+  UI["Next.js 聊天页"] --> Route["Route Handler"]
+  Route --> SDK["AI SDK v7 generateText"]
+  SDK --> Model["模型供应商"]
+  SDK --> Tool["getCost 等本地 tool"]
+  SDK --> Usage["usage.totalTokens"]
+  Usage --> UI
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '本周只碰产品层', body: 'Next.js App Router + AI SDK v7。不要把密钥写进客户端。' },
+    { title: '工具先本地', body: '用 SDK tools 演示 function calling。MCP 放到 W3/W6。' },
+    { title: '观测雏形', body: '把 usage 打印到面板就算完成。完整 OTel 是 W13。' },
+    { title: '明确不做', body: '向量库、状态图、多 Agent、沙箱。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="概念卡第一遍">
+  只读第 2 章与第〇章。输出一页纸：12 个术语的一句话定义。
+</Session>
+<Session when="Fri 2.5h" title="Next.js + AI SDK 跑通纯文本">
+  `pnpm create next-app`，App Router，`"type": "module"`。完成一个无工具的流式聊天。确认不能 `require("ai")`。
+</Session>
+<Session when="Sat 4h" title="加一个工具 + 展示 usage">
+  工具建议：`lookupStackPolicy`，输入问题，返回「主栈 TS / Python 仅对照」。把 `usage` 显示在气泡下方。
+</Session>
+<Session when="Sun 3h" title="对照概念卡 + 录制 Demo">
+  在代码注释里标出 Prompt、Tool Use、Streaming、Token。录 60 秒屏幕：提问、工具调用、cost 数字出现。
+</Session>
+
+<Callout tone="danger" title="本周黑名单">
+  generateObject、LangGraph、pgvector、MCP handshake。这些都会把注意力从直觉上带走。
+</Callout>
+
+<DemoBox title="AI SDK v7：流式聊天 + 本地 tool + usage" goal="里程碑的最小实现。可直接放进 `app/api/chat/route.ts` 思路中。">
+
+```ts
+import { streamText, tool } from 'ai';
+import { z } from 'zod';
+
+const lookupStackPolicy = tool({
+  description: '查询本学习方案的栈策略',
+  inputSchema: z.object({ topic: z.string() }),
+  execute: async ({ topic }) => ({
+    topic,
+    policy: 'TypeScript 主栈贯穿生产，Python 只做对照。',
+  }),
+});
+
+export async function chat(prompt: string) {
+  const result = streamText({
+    model: 'openai/gpt-4.1-mini',
+    prompt,
+    tools: { lookupStackPolicy },
+  });
+  return result.toUIMessageStreamResponse();
+}
+```
+
+页面侧显示 `message.parts` 里的 text 与 tool-invocation，并在结束时读取 usage。验收：问「我要不要学 Python 当主栈？」必须出现 tool 调用，而不是模型瞎编。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '概念卡 12 词齐全',
+    '流式输出可见',
+    '至少 1 个 tool 被真正执行',
+    '气泡下有 token 或美元估算',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w02">下一周：Prompt 与结构化输出</PlanCTA>

@@ -1,0 +1,134 @@
+---
+title: 三、技术选型
+description: 2026-09 核实的 TS 主栈版本表、选型决策流，以及 LangGraph hello-world Demo
+---
+
+import { PlanHeader, Callout, Arch, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { ChapterSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="第三章 · 选型"
+  items={[
+    { label: '课时', value: '4 h' },
+    { label: '难度', value: '中' },
+    { label: '产出', value: '版本锁文件' },
+    { label: '对应周', value: 'W1–W3' },
+  ]}
+/>
+
+<ChapterSwitcher current="03-tech" />
+
+版本为 2026-09-02 核实快照。生产锁定请用精确 npm 版本 + lockfile。学习前再核官方 changelog。
+
+## 学习目标
+
+1. 看到一个需求，能指出该用 AI SDK、LangGraph、MCP 还是 A2A。
+2. 把核实版本写入学习仓库的 `package.json` 注释或 `VERSIONS.md`。
+3. 跑通一个 LangGraph.js 两节点图，作为后续章节的底座。
+
+## 选型决策流
+
+<Mermaid
+  title="遇到能力缺口时怎么选"
+  chart={`
+flowchart TD
+  Need["新能力"] --> Q1{"是模型接入 / 流式 UI / 结构化输出?"}
+  Q1 -->|是| AISDK["Vercel AI SDK v7"]
+  Q1 -->|否| Q2{"是多步状态 / 审批 / 恢复?"}
+  Q2 -->|是| LG["LangGraph.js 1.2"]
+  Q2 -->|否| Q3{"是连外部工具?"}
+  Q3 -->|是| MCP["MCP 2026-07-28"]
+  Q3 -->|否| Q4{"是 Agent 之间协作?"}
+  Q4 -->|是| A2A["A2A v1.0"]
+  Q4 -->|否| Q5{"是长程自主拆任务?"}
+  Q5 -->|是| DA["DeepAgent / 自建 subgraph"]
+  Q5 -->|否| Mastra["Mastra v1 Workflow / Memory"]
+`}
+/>
+
+## 核实版本表
+
+| 技术 | 角色 | TS 选型 | 核实版本 |
+| --- | --- | --- | --- |
+| LangChain.js | LLM 抽象 / 工具 / RAG 积木 | `@langchain/core` | langchain 1.2.39 |
+| LangGraph.js | 主编排 | `@langchain/langgraph` | JS 1.2.9 |
+| Mastra | TS Agent / Workflow / Memory | `@mastra/core` | v1.62.0，需 Node 22.13+ |
+| Vercel AI SDK | 模型 / 结构化输出 / 流式 UI | `ai` | v7.0.74，ESM only |
+| MCP | 工具协议 | `@modelcontextprotocol/sdk` | 规范 2026-07-28 |
+| A2A | Agent 互操作 | `a2a-js` | v1.0.0 |
+| DeepAgent | 长程自主 | 自建或 `deepagents` | 0.7.8 |
+| RAG | 检索增强 | LangChain retrieval + pgvector | rerank() + GraphRAG 快照 |
+| Harness | 运行时 | LangGraph Server / Fastify | 原生 A2A & MCP |
+| Sandbox | 隔离执行 | E2B / Modal / OpenSandbox | Daytona 自托管不可用 |
+| Observability | 评测监控 | OTLP + LangFuse / Phoenix | LangSmith → SmithDB |
+
+## 架构位置
+
+<Arch
+  layers={[
+    { title: '产品层', body: '只允许 AI SDK v7 与 React。不要在 React 组件里直接 new StateGraph。' },
+    { title: '编排内核', body: 'LangGraph 管状态与恢复；Mastra 管 TS 侧 workflow/memory；LangChain 当积木而不是当主编排。' },
+    { title: '协议层', body: 'MCP 对工具，A2A 对 Agent。生产系统两者都要，不要互相替代。' },
+    { title: '平台层', body: 'Sandbox 与 Harness 是运行时，不是「又一个 Agent 框架」。' },
+  ]}
+/>
+
+## 详细学习方案
+
+<Session when="50 min" title="把版本表抄进 VERSIONS.md">
+  每行加「官方 changelog URL」。以后每周开始前先打开这一页，看是否滚动。
+</Session>
+
+<Session when="40 min" title="画你的禁止清单">
+  禁止：generateObject、MCP initialize、Mastra 0.x、Daytona self-host、把 LangChain 当状态机、把 RAG 当 W1 任务。
+</Session>
+
+<Session when="90 min" title="跑选型 Demo">
+  安装 `@langchain/langgraph`，跑下面两节点图。成功后才进入第 4 章。
+</Session>
+
+<Callout tone="warn" title="LangChain 不是主编排">
+  LangChain.js 提供 Runnable、Tools、Retrievers。多步业务状态、审批、恢复一律进 LangGraph。选错会在 W4–W5 返工。
+</Callout>
+
+<DemoBox title="LangGraph.js 最小图：分析 → 计划" goal="用 StateSchema 风格的状态对象跑两个节点，验证主编排选型是否安装成功。">
+
+```ts
+import { StateGraph, Annotation, START, END } from '@langchain/langgraph';
+
+const State = Annotation.Root({
+  prd: Annotation<string>(),
+  analysis: Annotation<string>(),
+  plan: Annotation<string>(),
+});
+
+const graph = new StateGraph(State)
+  .addNode('analyze', async state => ({
+    analysis: `目标: ${state.prd.slice(0, 80)}`,
+  }))
+  .addNode('plan', async state => ({
+    plan: `下一步: 把「${state.analysis}」拆成 3 个用户故事`,
+  }))
+  .addEdge(START, 'analyze')
+  .addEdge('analyze', 'plan')
+  .addEdge('plan', END)
+  .compile();
+
+export const run = (prd: string) => graph.invoke({ prd });
+```
+
+验收：`run("做一个登录页")` 返回的 state 同时有 `analysis` 和 `plan`。这就是 W4 三节点图的胚胎。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    'VERSIONS.md 含上表全部行',
+    '能口述 6 个决策问题的答案',
+    'LangGraph 两节点图可运行',
+    '仓库中没有任何 generateObject 依赖',
+  ]}
+/>
+
+<PlanCTA href="/chapters/04-architecture">下一章：目标架构</PlanCTA>

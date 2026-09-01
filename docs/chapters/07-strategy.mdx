@@ -1,0 +1,108 @@
+---
+title: 七、专属学习策略
+description: 概念先行、TS 一栈到底、价值密度与阶段交付策略，以及 AGENTS.md Demo
+---
+
+import { PlanHeader, Callout, Arch, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { ChapterSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="第七章 · 方法"
+  items={[
+    { label: '课时', value: '2 h' },
+    { label: '难度', value: '低' },
+    { label: '产出', value: 'AGENTS.md' },
+    { label: '对应周', value: 'W1–W2' },
+  ]}
+/>
+
+<ChapterSwitcher current="07-strategy" />
+
+策略比信息更值钱。本章把六条策略写成仓库里的强制约定，后续 Agent 与你自己都按同一份文件做事。
+
+## 学习目标
+
+1. 把六条策略背成可执行规则，而不是鸡汤。
+2. 在学习仓库根目录落地 AGENTS.md（AAIF 标准，60k+ 项目在用）。
+3. 规定每周五的复盘问题和每周日的预读材料。
+
+## 策略流
+
+<Mermaid
+  title="每周循环"
+  chart={`
+flowchart TD
+  Sun["周日预读概念卡"] --> Build["周中只做里程碑"]
+  Build --> Fri["周五演示给自己看"]
+  Fri --> Retro["写下过时 API / 成本 / 卡点"]
+  Retro --> Sun
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '概念先行 1 周', body: 'W1 把第 2 章地图读透。地图建立后学每项技术都很快。' },
+    { title: 'TS 一栈到底', body: 'Python 只在 W5、W9 对标。不切换主语言。' },
+    { title: '价值密度排序', body: '核心 → 互操作 → 增强 → 生产化。不要把 RAG 当入门。' },
+    { title: '阶段必交付', body: '每个阶段一个可运行系统。时间不够保四项 P0。' },
+  ]}
+/>
+
+## 详细学习方案
+
+<Session when="30 min" title="抄六条策略进 AGENTS.md">
+  用下面 Demo 当模板，改成第二人称命令句，让以后的编码 Agent 也能遵守。
+</Session>
+
+<Session when="30 min" title="设定复盘问题">
+  固定三问：本周里程碑能演示吗？有没有抄到过时 API？单 run 成本多少？
+</Session>
+
+<Session when="40 min" title="时间盒">
+  工作日 21:30–23:00；周六上午 4 小时深水区；周日 90 分钟只做笔记和预读，不写新功能。
+</Session>
+
+<Callout tone="warn" title="警惕版本时效">
+  MCP 2026-07-28、A2A v1.0、AI SDK v7、Mastra v1 都是近期破坏性更新。学每项技术前先开 changelog。
+</Callout>
+
+<DemoBox title="学习仓库根目录 AGENTS.md" goal="项目级指令用 AGENTS.md 承载，而不是散落在聊天记录里。W2 会把它真正接到 Prompt。">
+
+```md
+# AGENTS.md
+
+## 栈
+- 主语言 TypeScript / ESM。禁止 require("ai")。
+- Python 仅允许 apps/notebooks，且必须写对照结论。
+
+## 过时 API 黑名单
+- generateObject / streamObject
+- MCP initialize 握手 / Mcp-Session-Id
+- Mastra 0.x
+- A2A v0.3
+- Daytona self-host
+
+## 交付
+- 每周一个可运行里程碑。
+- 写操作必须经过 approval。
+- 没有 tenant 的接口禁止合并。
+
+## 时间不够时
+- 保 checkpoint、approval、eval gate、sandbox。
+```
+
+验收：把文件放在仓库根目录。W2 Demo 会读取它当 system prompt 的一部分。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '根目录存在 AGENTS.md',
+    '日历上有周五演示与周日预读',
+    '能说出价值密度四段',
+    '黑名单 API 至少 5 条',
+  ]}
+/>
+
+<PlanCTA href="/chapters/08-risks">下一章：风险与降级</PlanCTA>

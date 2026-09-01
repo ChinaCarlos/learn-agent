@@ -1,0 +1,112 @@
+---
+title: W14 生产化 + 复盘
+description: 第十四周学习方案：Docker/K8s、canary、rollback、SLO、runbook，以及故障演练 Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 F · 第 14 周"
+  items={[
+    { label: '日期', value: '12-03 → 12-09' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: '交付' },
+    { label: '里程碑', value: '50 任务+回滚' },
+  ]}
+/>
+
+<WeekSwitcher current="w14" />
+
+把 13 周的零件变成可演示的 staging。不必上公有云 K8s，但必须有容器、回滚、SLO、on-call 剧本。对照 [第 6 章验收](/chapters/06-acceptance) 逐条打勾。
+
+## 本周目标
+
+1. staging 连续跑 50 个任务（可回放 golden set）。
+2. 一次故障演练：杀 worker、看恢复、看 trace。
+3. 一次回滚演练：坏版本上线后切回。
+4. 文档：runbook、SLO、架构图更新到本站同级 README。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: '打包', desc: 'Docker Compose' },
+    { title: '50 runs', desc: '回放数据集' },
+    { title: '演练', desc: '杀进程/回滚' },
+    { title: '对照验收', desc: '四类全过' },
+  ]}
+/>
+
+<Mermaid
+  title="发布与回滚"
+  chart={`
+flowchart TD
+  Build["镜像 digest 锁定"] --> Canary["10% traffic"]
+  Canary --> SLO{"error / p95 / cost 破线?"}
+  SLO -->|是| RB["立刻回滚上一 digest"]
+  SLO -->|否| Full["100%"]
+  Full --> Oncall["runbook 值班"]
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '产品层', body: 'staging 控制台能完成 PRD→审批→结果。' },
+    { title: '编排+执行', body: 'Compose 至少 4 容器：web、api、worker、postgres。可选 redis、otel。' },
+    { title: '发布', body: '镜像 tag 用 digest，不要 latest。' },
+    { title: '运营', body: 'SLO 建议起步：可用性 99%、p95 < 8s（非 LLM 等待部分）、单 run 成本预算。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="Compose 一键起来">
+  新目录 clone 后 `pnpm install && docker compose up` 能跑。密钥走 env。
+</Session>
+<Session when="Fri 2.5h" title="50 任务回放">
+  用 W12 数据集打进去。统计成功/中断/失败。失败要有 traceId。
+</Session>
+<Session when="Sat 4h" title="双演练">
+  ① kill worker，确认 W5 恢复仍成立。② 把错误镜像标为 current 再 rollback。
+</Session>
+<Session when="Sun 3h" title="验收彩排">
+  按第 6 章剧本走一遍，录屏。更新概念卡：13 周里每个术语打勾。
+</Session>
+
+<Callout tone="ok" title="学完的标志">
+  你能向同事演示：需求怎么进系统、哪里审批、挂了怎么恢复、钱怎么控、评测怎么红、代码怎么隔离。
+</Callout>
+
+<DemoBox title="发布清单与自动回滚条件" goal="生产化不是多写 YAML，而是用代码表达何时认为自己失败。">
+
+```ts
+type Slo = { errorRate: number; p95ms: number; usdPerRun: number };
+
+export function shouldRollback(now: Slo, budget: Slo) {
+  if (now.errorRate > budget.errorRate) return 'error_rate';
+  if (now.p95ms > budget.p95ms) return 'latency';
+  if (now.usdPerRun > budget.usdPerRun) return 'cost';
+  return null;
+}
+
+export const STAGING_BUDGET: Slo = { errorRate: 0.05, p95ms: 8000, usdPerRun: 1.5 };
+```
+
+验收：把 errorRate 调到 0.2 必须返回 `error_rate`。把这个函数接到你的 canary 脚本。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    'Compose 可冷启动',
+    '50 任务有统计',
+    '杀 worker 可恢复',
+    '回滚演练有记录',
+    'runbook / SLO 文档齐全',
+    '第 6 章四类验收均可演示',
+  ]}
+/>
+
+<PlanCTA href="/chapters/06-acceptance">回到验收清单核对</PlanCTA>

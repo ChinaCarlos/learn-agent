@@ -1,0 +1,138 @@
+---
+title: 四、目标系统架构
+description: 四层 TS 主栈架构、PRD 到合并的门控状态图，以及 Fastify 网关骨架 Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { ChapterSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="第四章 · 架构"
+  items={[
+    { label: '课时', value: '5 h' },
+    { label: '难度', value: '中高' },
+    { label: '产出', value: '四层骨架' },
+    { label: '对应周', value: 'W4–W10' },
+  ]}
+/>
+
+<ChapterSwitcher current="04-architecture" />
+
+目标不是「再学一个框架」，而是 14 周末能演示一条 PRD → PR 的企业级流水线。本章先把四层和四个审批闸门画进肌肉记忆。
+
+## 学习目标
+
+1. 不看笔记画出四层：产品、编排、执行/工具、可观测。
+2. 能指出 4 个 gate 分别拦什么，失败时回环到哪。
+3. 用 Fastify 搭出带 tenant 头的网关骨架。
+
+## 四层架构
+
+<Arch
+  layers={[
+    { title: '产品层（主战场 · TS）', body: 'Next.js App Router + AI SDK v7 控制台。项目 / run / artifact / diff / 审批 / 评测页。React Flow 图调试。SSE 增量渲染。' },
+    { title: '编排内核（LangGraph.js）', body: 'Fastify gateway（OIDC/tenant）· LangGraph Server · PostgresSaver · Redis locks/streams · 审批服务 · Mastra v1 Workflow。' },
+    { title: '执行 / 工具层', body: 'Sandbox Workers（E2B / 自托管）· MCP 2026-07-28 Gateway（无状态 / 头路由 / 审计）· A2A v1.0 对外协作 · Git/CI · 对象存储。' },
+    { title: '可观测后端', body: 'OTLP Collector → LangFuse / Phoenix / LangSmith(SmithDB) · eval dataset · trace / metric / log / cost 关联。' },
+  ]}
+/>
+
+<Mermaid
+  title="请求穿过四层"
+  chart={`
+flowchart TB
+  U["控制台 Next.js"] --> G["Fastify Gateway<br/>OIDC / tenant"]
+  G --> S["LangGraph Server"]
+  S --> CK["PostgresSaver"]
+  S --> MCP["MCP Gateway"]
+  S --> A2A["A2A 绑定"]
+  MCP --> SB["Sandbox Worker"]
+  S --> OTLP["OTLP Collector"]
+  SB --> OTLP
+  OTLP --> LF["LangFuse / Phoenix"]
+`}
+/>
+
+## PRD → 代码：顺序门控
+
+<Flow
+  steps={[
+    { title: 'Product Analyst', desc: '拆目标/用户/指标' },
+    { title: '① 需求冻结', desc: 'PO 审批', gate: true },
+    { title: 'Specifier', desc: '用户故事 + AC' },
+    { title: 'Architect', desc: '选型 / ADR' },
+    { title: '② 架构/安全', desc: '审批', gate: true },
+  ]}
+/>
+
+<Flow
+  steps={[
+    { title: 'Planner', desc: '任务图' },
+    { title: 'Developer', desc: '沙箱补丁' },
+    { title: 'Reviewer', desc: '规范 / SAST' },
+    { title: '③ QA Gate', desc: 'build/test/evals', gate: true },
+    { title: '④ 合并', desc: 'PR / Deploy', gate: true },
+  ]}
+/>
+
+回环规则：QA 失败且预算充足 → Developer；Architect 驳回 → Requirement；无预算 → 升级人工（防无限循环）。
+
+## 详细学习方案
+
+<Session when="60 min" title="默画四层">
+  白纸画两遍。第一遍看本页，第二遍合上。缺 Redis 或 OTLP 都算失败。
+</Session>
+
+<Session when="60 min" title="给 4 个 gate 写失败语义">
+  每个 gate 写清：谁批、超时怎么办、拒绝后 state 去哪、审计记什么字段。
+</Session>
+
+<Session when="90 min" title="实现网关骨架 Demo">
+  下面的 tenant 中间件必须成为后续所有 API 的默认包装。没有 tenant 的接口不许进编排层。
+</Session>
+
+<Callout tone="danger" title="MemorySaver 不是架构">
+  生产必须 PostgresSaver / SqliteSaver / RedisSaver / MongoSaver。MemorySaver 在 serverless 冷启动会丢状态，W5 会专门打这个坑。
+</Callout>
+
+<DemoBox title="Fastify gateway：租户头进编排层之前必须存在" goal="演示产品层请求如何被架构边界拦住。没有 x-tenant-id 不得调用 graph。">
+
+```ts
+import Fastify from 'fastify';
+
+const app = Fastify();
+
+app.addHook('preHandler', async (req, reply) => {
+  const tenant = req.headers['x-tenant-id'];
+  if (typeof tenant !== 'string' || tenant.length < 3) {
+    return reply.code(401).send({ error: 'missing_tenant' });
+  }
+  req.headers['x-tenant-id'] = tenant;
+});
+
+app.post('/runs', async req => {
+  const tenant = req.headers['x-tenant-id'];
+  return {
+    runId: crypto.randomUUID(),
+    tenant,
+    layer: 'orchestration',
+    checkpointer: 'PostgresSaver',
+  };
+});
+```
+
+验收：缺头返回 401；带 `x-tenant-id: acme` 返回 runId。W8 的 ACL 与 W11 的 RBAC 都挂在这个钩子上长出来。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '能手绘四层并标出存储（Postgres / Redis / 对象存储）',
+    '4 个 gate 有失败与回环说明',
+    'gateway Demo 拒绝无租户请求',
+    '文档里没有任何「把 Agent 直接暴露给公网」的设计',
+  ]}
+/>
+
+<PlanCTA href="/chapters/05-roadmap">下一章：14 周路线</PlanCTA>

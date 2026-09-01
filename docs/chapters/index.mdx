@@ -1,0 +1,79 @@
+---
+title: 如何使用本方案
+description: 14 周企业级 Agent 学习站的阅读顺序、章节结构、每周节奏和演示约定
+---
+
+import { PlanHeader, Callout, Arch, Flow, CheckList } from '../../theme/components/DocsUI';
+import { PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="使用说明"
+  items={[
+    { label: '周期', value: '14 周' },
+    { label: '起点', value: '2026-09-03' },
+    { label: '主栈', value: 'TypeScript' },
+    { label: '快照', value: '2026-09-02' },
+  ]}
+/>
+
+这不是一份「技术名词清单」，而是把根目录《企业级 Agent 学习方案》拆成可执行路径：先建立概念，再按周交付可运行系统。
+
+## 建议阅读顺序
+
+<Flow
+  steps={[
+    { title: '〇 更新', desc: '先知道哪些教程已失效' },
+    { title: '二 概念', desc: '建立心智模型' },
+    { title: '四 架构', desc: '看清目标系统' },
+    { title: 'W1 开工', desc: '从聊天/工具 UI 落地' },
+  ]}
+/>
+
+<Mermaid
+  title="站点信息架构"
+  chart={`
+flowchart LR
+  Home["首页"] --> Ch["方案章节 0-8"]
+  Home --> Wk["每周计划 W1-W14"]
+  Ch --> C2["概念地图"]
+  C2 --> W1["W1 开工"]
+  Wk --> Demo["每章/每周一个 Demo"]
+  Demo --> Gate["四类验收"]
+`}
+/>
+
+## 每一章你将看到什么
+
+<Arch
+  layers={[
+    { title: '学习目标与课时', body: '这章解决什么问题、花多少时间、和哪一周对应。' },
+    { title: '流程图', body: '学习顺序或运行时顺序，避免把协议、框架、产品层混在一起。' },
+    { title: '架构图', body: '这章技术落在四层架构的哪一层，以及和上下游如何接线。' },
+    { title: 'Demo 小案例', body: '用最短 TypeScript 代码演示本章技术，可复制到本地仓库改。' },
+  ]}
+/>
+
+## 每周怎么学
+
+默认容量 **10–15 小时/周**。时间不够时只保四项企业级分界线：
+
+1. checkpoint 可恢复
+2. approval 能拦住写操作
+3. eval gate 能让 CI 失败
+4. sandbox 能隔离代码执行
+
+<Callout tone="warn" title="版本时效是最大风险">
+  教程里如果出现 initialize 握手、generateObject、Mastra 0.x、A2A v0.3，直接停看，改读官方 changelog。本站第三、第〇章列出了 2026-09-02 核实版本。
+</Callout>
+
+<CheckList
+  items={[
+    'W1 开始前读完第〇章和第 2 章，做成自己的概念卡',
+    '每周只交付一个可运行里程碑，不追求一次写完整产品',
+    'Python 只做对照，不切换主语言',
+    '学完一章，回到概念地图打勾',
+  ]}
+/>
+
+<PlanCTA href="/chapters/00-v2-updates">先看 v2 更新要点</PlanCTA>

@@ -1,0 +1,121 @@
+---
+title: W6 MCP 2026-07-28 工具标准化
+description: 第六周学习方案：无状态 MCP、头路由、discover、gateway 校验限流审计 Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 B · 第 6 周"
+  items={[
+    { label: '日期', value: '10-08 → 10-14' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'MCP 2026-07-28' },
+    { label: '里程碑', value: '无状态 server' },
+  ]}
+/>
+
+<WeekSwitcher current="w06" />
+
+MCP 是工具 USB 标准。本版改为无状态核心：无握手、无 Mcp-Session-Id，方法名走 `Mcp-Method` / `Mcp-Name` 头，server→client 用 MRTR，授权从 DCR 转向 CIMD。
+
+## 本周目标
+
+1. 按新规范建 server，**不要**写 initialize/initialized。
+2. 封装 repo.search / jira.list / web.search 三个工具（可用 mock）。
+3. 前面加 gateway：校验 schema、限流、审计日志。
+4. JSON Schema 2020-12 描述工具。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: '读新规范', desc: '只看无状态章节' },
+    { title: 'discover', desc: '列出工具' },
+    { title: '头路由', desc: 'Mcp-Method' },
+    { title: 'Gateway', desc: '校验限流审计' },
+  ]}
+/>
+
+<Mermaid
+  title="无状态 MCP 调用"
+  chart={`
+flowchart LR
+  Agent --> GW["MCP Gateway"]
+  GW --> Head["Mcp-Method / Mcp-Name"]
+  Head --> Svc["Stateless Server"]
+  Svc --> Tool["repo.search"]
+  Svc --> Audit["audit log"]
+  Svc -. "server 需要回调" .-> MRTR["MRTR"]
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '执行 / 工具层', body: 'MCP Gateway 是独立进程。Agent 不直连各个 tool 实现。' },
+    { title: '无状态', body: '每次请求自包含。禁止把会话存在 server 内存。' },
+    { title: '安全', body: 'CIMD 授权本周可用静态 token 代替，但审计字段必须留好。' },
+    { title: '编排', body: 'LangGraph 节点只认识「工具名 + 参数」，不认识 HTTP 细节。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="对照旧教程">
+  搜索你收藏夹里任何 MCP 文章。出现 initialize 就整篇作废。只读 2026-07-28 spec。
+</Session>
+<Session when="Fri 2.5h" title="实现 discover + 一个 search">
+  `GET/POST` 按你选的 SDK 来，但方法名必须来自头而不是 path 魔法。
+</Session>
+<Session when="Sat 4h" title="三个工具 + schema">
+  repo / jira / search。每个工具一份 JSON Schema 2020-12。错误输入返回 400 而不是模型可吞的 200。
+</Session>
+<Session when="Sun 3h" title="Gateway">
+  校验、每租户 QPS、把 method/name/tenant/latency 写入审计表。
+</Session>
+
+<Callout tone="danger" title="旧写法已废弃">
+  「先握手建会话再调工具」是 W6 最大陷阱。代码里出现 `Mcp-Session-Id` 就删。
+</Callout>
+
+<DemoBox title="无状态头路由" goal="演示方法名走头、请求自包含。这是新规范的最小骨架。">
+
+```ts
+import type { IncomingHttpHeaders } from 'node:http';
+
+type McpCall = { method: string; name: string; tenant: string; args: unknown };
+
+export function parseMcpHeaders(headers: IncomingHttpHeaders, body: unknown): McpCall {
+  const method = headers['mcp-method'];
+  const name = headers['mcp-name'];
+  const tenant = headers['x-tenant-id'];
+  if (typeof method !== 'string' || typeof name !== 'string' || typeof tenant !== 'string') {
+    throw new Error('missing_mcp_headers');
+  }
+  return { method, name, tenant, args: body };
+}
+
+export async function handleMcp(call: McpCall) {
+  if (call.method === 'tools/call' && call.name === 'repo.search') {
+    return { files: ['README.md'], tenant: call.tenant };
+  }
+  throw new Error('unknown_method');
+}
+```
+
+验收：缺头抛错；带齐头返回文件列表。把每次 call JSON.append 到 `audit.ndjson`。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '代码中无 initialize 握手',
+    '三个工具可被 discover',
+    'gateway 有审计行',
+    '错误 schema 返回 400',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w07">下一周：A2A 与多 Agent</PlanCTA>

@@ -1,0 +1,120 @@
+---
+title: W9 DeepAgent 长程自主
+description: 第九周学习方案：全 harness、递归子图、预算与终止条件，以及任务拆解 Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 C · 第 9 周"
+  items={[
+    { label: '日期', value: '10-29 → 11-04' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'DeepAgent' },
+    { label: '里程碑', value: '预算内拆任务' },
+  ]}
+/>
+
+<WeekSwitcher current="w09" />
+
+DeepAgent 是「全 harness」：planning + context management + delegation 开箱即用。任何 LangGraph 图都可作为 sub-agent。安全模型是 trust the LLM，边界必须在 tool / 沙箱层强制。
+
+## 本周目标
+
+1. 大任务能拆成子任务图并执行。
+2. 预算耗尽时优雅停止，留下部分 artifact。
+3. 终止条件写死：完成 / 失败 / 超预算 / 超步数。
+4. 可选：Python 对照 backend protocol，结论迁回 TS。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: 'Plan', desc: '写出任务图' },
+    { title: 'Delegate', desc: '子图执行' },
+    { title: 'Compact', desc: '压缩上下文' },
+    { title: 'Stop', desc: '预算/步数' },
+  ]}
+/>
+
+<Mermaid
+  title="长程循环"
+  chart={`
+flowchart TD
+  Goal["大目标"] --> Plan["规划子任务"]
+  Plan --> Run["执行子图"]
+  Run --> Budget{"预算 / 步数?"}
+  Budget -->|超限| Stop["优雅停止 + 报告"]
+  Budget -->|还有| Ctx{"上下文是否过大?"}
+  Ctx -->|是| Compact["摘要进 state"]
+  Ctx -->|否| Plan
+  Compact --> Plan
+`}
+/>
+
+<Arch
+  layers={[
+    { title: 'Harness 雏形', body: '生命周期、预算、委托。W10 会把它升级成真正的控制面。' },
+    { title: '子 Agent', body: 'W4 的图、W8 的 retrieve、W7 的同事都可以被委托。' },
+    { title: '安全边界', body: '不要指望模型自己守规矩。写工具仍走审批，代码仍走沙箱（W11）。' },
+    { title: '成本', body: 'v0.7 宣传输入 token 降 65%，仍要接第 8 章 BudgetGuard。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="定义 TaskSpec">
+  `goal, subtasks[], budgetUsd, maxSteps, status`。不用框架先跑通拆解。
+</Session>
+<Session when="Fri 2.5h" title="接到 LangGraph subgraph">
+  每个 subtask 调已有图。失败标记 failed 并继续下一个，除非是安全失败。
+</Session>
+<Session when="Sat 4h" title="上下文压缩">
+  子图只把摘要写回父 state，禁止把全部对话拼接上去。
+</Session>
+<Session when="Sun 3h" title="预算耗尽演练">
+  把预算设很小，确认停止时有 `partial.json` 和原因码 `budget_exceeded`。
+</Session>
+
+<Callout tone="warn" title="递归子图是 stretch">
+  时间不够不要做无限递归委托。一层 supervisor + 一层 worker 就够里程碑。
+</Callout>
+
+<DemoBox title="带终止条件的任务拆解器" goal="DeepAgent 的核心不是更长的 prompt，而是停得下来。">
+
+```ts
+import { BudgetGuard } from '../../lib/budget';
+
+type Sub = { id: string; title: string; status: 'todo' | 'done' | 'skipped' };
+
+export function* runDeep(goal: string, subs: Sub[], guard: BudgetGuard) {
+  for (const sub of subs) {
+    try {
+      guard.charge(80_000, 5);
+      sub.status = 'done';
+      yield { goal, sub, ok: true };
+    } catch (error) {
+      sub.status = 'skipped';
+      yield { goal, reason: 'budget_exceeded', remaining: subs.filter(s => s.status === 'todo') };
+      return;
+    }
+  }
+}
+```
+
+验收：3 个子任务、极小预算时，至少 1 个 skipped，并且生成器停止而不是抛到进程外未捕获。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '大任务被拆成 ≥3 个子任务并执行',
+    '超预算有部分产物',
+    '父 state 不膨胀成全文拼接',
+    '安全写操作仍需审批',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w10">下一周：Harness</PlanCTA>

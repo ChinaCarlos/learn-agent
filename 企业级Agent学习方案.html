@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>企业级 Agent 学习方案 · TS 主栈 · v2（2026-09 技术快照）</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#111a30; --panel2:#0f1830; --line:#23324f;
+    --text:#e8eefc; --muted:#93a3c0; --brand:#6d8cff; --brand2:#39d0c4;
+    --gold:#ffc66b; --pink:#ff7ab8; --green:#57e6a4; --red:#ff8b81;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,#17233f 0,transparent 60%),var(--bg);
+    color:var(--text);font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.7}
+  a{color:var(--brand2);text-decoration:none}
+  .wrap{max-width:1160px;margin:0 auto;padding:32px 24px 80px}
+  header.hero{padding:56px 48px;border-radius:24px;background:
+    linear-gradient(135deg,#1b2a4d 0%,#12233f 55%,#0f2b35 100%);
+    border:1px solid var(--line);box-shadow:var(--shadow);position:relative;overflow:hidden;margin-bottom:28px}
+  header.hero::after{content:"";position:absolute;right:-60px;top:-60px;width:320px;height:320px;border-radius:50%;
+    background:radial-gradient(circle,rgba(109,140,255,.35),transparent 70%)}
+  .tag{display:inline-block;padding:4px 12px;border-radius:999px;background:rgba(109,140,255,.15);
+    color:var(--brand);font-size:13px;font-weight:600;letter-spacing:.5px}
+  .tag.new{background:rgba(87,230,164,.16);color:var(--green)}
+  h1{font-size:40px;line-height:1.25;margin:16px 0 8px;letter-spacing:-.5px}
+  .sub{color:var(--muted);font-size:16px;max-width:880px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:28px}
+  .kpi{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .kpi b{font-size:22px;color:var(--gold);display:block}
+  .kpi span{font-size:12px;color:var(--muted)}
+  section{margin-top:34px}
+  h2{font-size:24px;margin:0 0 16px;padding-left:14px;border-left:4px solid var(--brand)}
+  h3{font-size:17px;margin:18px 0 8px;color:var(--brand2)}
+  p{margin:8px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;box-shadow:var(--shadow)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+  tr:hover td{background:rgba(109,140,255,.05)}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600}
+  .p-brand{background:rgba(109,140,255,.18);color:var(--brand)}
+  .p-green{background:rgba(87,230,164,.16);color:var(--green)}
+  .p-gold{background:rgba(255,198,107,.16);color:var(--gold)}
+  .p-pink{background:rgba(255,122,184,.16);color:var(--pink)}
+  .flow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .node{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;text-align:center;flex:1;min-width:90px}
+  .node b{display:block;color:var(--brand2)}
+  .gate{background:rgba(255,122,184,.12);border-color:var(--pink);color:var(--pink)}
+  .arrow{color:var(--muted);font-size:20px}
+  .loop{color:var(--gold);font-size:12px}
+  .arch{background:var(--panel2);border:1px dashed var(--line);border-radius:16px;padding:20px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.9}
+  .arch .lay{display:block;padding:10px 14px;margin:8px 0;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
+  .arch .lay b{color:var(--brand)}
+  ul{padding-left:20px;margin:8px 0}
+  li{margin:5px 0}
+  .check{color:var(--green)}
+  .warn{color:var(--gold)}
+  .bad{color:var(--red)}
+  .timeline{position:relative;padding-left:28px}
+  .timeline::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:var(--line)}
+  .tl-item{position:relative;margin-bottom:18px}
+  .tl-item::before{content:"";position:absolute;left:-22px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 3px rgba(109,140,255,.2)}
+  .tl-item b{color:var(--text)}
+  .week-table td:first-child{font-weight:700;color:var(--gold);white-space:nowrap}
+  .quote{border-left:3px solid var(--brand2);padding:10px 16px;background:rgba(57,208,196,.06);border-radius:0 10px 10px 0;color:#d3eef0;font-size:14px}
+  .alert{border-left:3px solid var(--red);padding:12px 16px;background:rgba(255,139,129,.08);border-radius:0 10px 10px 0;font-size:14px}
+  .concept{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--panel)}
+  .concept .term{color:var(--gold);font-weight:700;font-size:15px}
+  .map-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .map-card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel)}
+  .map-card h4{margin:0 0 8px;color:var(--brand);font-size:14px}
+  .map-card ul{padding-left:16px;margin:0;font-size:12.5px}
+  .map-card li{margin:3px 0}
+  .snap{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .snap-item{border:1px solid var(--line);border-left:3px solid var(--green);border-radius:10px;padding:12px 14px;background:var(--panel)}
+  .snap-item .v{color:var(--green);font-weight:700;font-size:13px;font-family:ui-monospace,Menlo,monospace}
+  .snap-item .d{font-size:12.5px;color:var(--muted);margin-top:4px}
+  footer{margin-top:44px;color:var(--muted);font-size:13px;text-align:center;border-top:1px solid var(--line);padding-top:22px}
+  @media(max-width:900px){.grid2,.grid3,.map-grid,.snap{grid-template-columns:1fr} .kpis{grid-template-columns:1fr 1fr} h1{font-size:30px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="tag new">v2 · 2026-09-02 技术快照更新</span>
+  <h1>从产品到开发的企业级 Agent<br>系统学习方案（TS 主栈）</h1>
+  <p class="sub">面向资深前端工程师。以 <b>TypeScript 为主栈</b>，覆盖 LangChain / LangGraph / A2A / MCP / DeepAgent / RAG / Prompt / Harness / Sandbox 九大主流技术，含「Agent 核心概念扫盲」。本版已按 <b>截至 2026-09-02 联网核实的最新版本</b> 全面修订。</p>
+  <div class="kpis">
+    <div class="kpi"><b>14 周</b><span>2026-09-03 → 12-09</span></div>
+    <div class="kpi"><b>10–15 h/周</b><span>总容量 ≈150h</span></div>
+    <div class="kpi"><b>9 大技术</b><span>主流 Agent 技术全覆盖</span></div>
+    <div class="kpi"><b>4 类验收</b><span>Demo · 恢复 · 隔离 · 红队</span></div>
+  </div>
+</header>
+
+<!-- 本版变更 -->
+<section>
+  <h2>〇、v2 更新要点：这些变化会改变你的学习路线</h2>
+  <div class="alert">
+    <b>不是版本号微调，是有破坏性变更。</b>下面 6 项是本次联网核实后必须调整学习内容的，旧教程/旧代码里对应部分已失效。
+  </div>
+  <div class="snap" style="margin-top:14px">
+    <div class="snap-item">
+      <span class="v">MCP 2026-07-28（当前规范）</span>
+      <div class="d"><b>协议改为无状态。</b>移除 initialize/initialized 握手与 Mcp-Session-Id 头，新增 server/discover；方法名走 Mcp-Method / Mcp-Name HTTP 头；server→client 请求改用 MRTR；授权从 DCR 转向 CIMD。<b>影响：</b>W6 学 MCP 必须按新规范建 server，旧的"先握手建会话"写法已废弃。</div>
+    </div>
+    <div class="snap-item">
+      <span class="v">A2A v1.0.0（2026-03-12 稳定）</span>
+      <div class="d"><b>首个生产可用版本</b>，由 Linux Foundation 治理，150+ 组织加入。新增签名 Agent Card（JWS）、原生多租户、三种绑定（JSON-RPC / gRPC / HTTP+REST）可各自独立版本号、OAuth Device Code + PKCE。<b>影响：</b>W7 直接用 v1.0 SDK，不必再学 v0.3。</div>
+    </div>
+    <div class="snap-item">
+      <span class="v">Vercel AI SDK v7.0.74</span>
+      <div class="d">v7 于 2026-06-25 GA，<b>ESM only（require() 已移除）</b>。v6（2025-12-22）引入 ToolLoopAgent、Output API（generateObject 已废弃）、needsApproval、rerank()、MCP 转 stable。<b>影响：</b>W1–2 直接用 Output API，不要学 generateObject。</div>
+    </div>
+    <div class="snap-item">
+      <span class="v">Mastra v1（2026-01 发布）</span>
+      <div class="d"><b>要求 Node.js 22.13.0+</b>，0.x→v1 有大量破坏性变更（Tracing 从 OTel 改为专用 observability 包、Storage/Vectors 方法改 list 模式、MCP tool context 重组）。Mastra Cloud 已拆为 Studio + Server。<b>影响：</b>新项目直接 v1，跳过 0.x 教程。</div>
+    </div>
+    <div class="snap-item">
+      <span class="v">LangGraph 1.2.x（Python 1.2.11 / JS 1.2.9）</span>
+      <div class="d">Python 1.2.0 新增 <b>DeltaChannel</b>（checkpoint 只存增量）、per-node timeouts、node error_handler（Saga 补偿）、graceful shutdown、streaming v3。<b>注意：timeouts 与 error handlers 目前是 Python-only</b>，TS 端需用 retry policy 替代。</div>
+    </div>
+    <div class="snap-item">
+      <span class="v">Daytona 于 2026-06 转闭源</span>
+      <div class="d">生产代码库闭源后 <b>self-host 不再可用</b>，控制面只能 Daytona 托管。<b>影响：</b>W11 沙箱选型若考虑自托管，改看 OpenSandbox / Microsandbox（均开源自托管），或直接用 E2B / Modal 托管方案。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 栈策略 -->
+<section>
+  <h2>一、栈策略：TS 主栈 + Python 对照</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>主栈 = TypeScript（全链路）</h3>
+      <ul>
+        <li><span class="check">✓</span> 产品层：Next.js + <b>AI SDK v7</b> + React Flow（你的护城河）</li>
+        <li><span class="check">✓</span> 编排内核：<b>LangGraph.js 1.2.x</b>（checkpoint / interrupt 已完备）</li>
+        <li><span class="check">✓</span> Agent 框架：<b>LangChain.js 1.2.x + Mastra v1</b></li>
+        <li><span class="check">✓</span> 服务：Fastify/Hono、Zod schema（一套语言打通前后端）</li>
+        <li><span class="check">✓</span> 不切换语言 = <b>学习带宽全部留给 Agent 概念</b></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Python = 辅助/对照（不放弃）</h3>
+      <ul>
+        <li><span class="warn">!</span> 只在「TS 生态能力不足」处对标：<b>per-node timeouts、error_handler</b> 目前 Python-only</li>
+        <li><span class="warn">!</span> 用 uv + Jupyter 做<b>实验性对照</b>，验证 TS 实现思路</li>
+        <li><span class="warn">!</span> 目标：读懂官方文档与实现，能迁移到 TS，<b>不要求熟练开发</b></li>
+      </ul>
+      <div class="quote" style="margin-top:12px"><b>一句话：</b>主栈 TS 贯穿生产，Python 只做「概念验证与对标」，避免双栈拖慢进度。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 概念扫盲 -->
+<section>
+  <h2>二、Agent 核心概念扫盲（新手必读）</h2>
+  <p style="color:var(--muted)">这是一切的「目录」。W1 通读一遍，后续每学一项回来标注 ✅，形成自己的心智模型。<span class="pill p-green">本版新增 2026 新概念</span></p>
+  <div class="map-grid" style="margin-top:14px">
+    <div class="map-card">
+      <h4>① 基础层</h4>
+      <ul>
+        <li><b>LLM / Token</b>：模型、上下文窗口、计费</li>
+        <li><b>Prompt</b>：System / few-shot / 结构化输出</li>
+        <li><b>Tool Use</b>：函数调用、JSON Schema</li>
+        <li><b>Memory</b>：短期(对话) / 长期(向量库)</li>
+        <li><b>Streaming</b>：SSE / 增量渲染</li>
+        <li><b>Output API</b> <span class="pill p-green">新</span>：AI SDK v6+ 取代 generateObject</li>
+      </ul>
+    </div>
+    <div class="map-card">
+      <h4>② 编排层</h4>
+      <ul>
+        <li><b>Agent Loop</b>：Thought→Action→Observation</li>
+        <li><b>ToolLoopAgent</b> <span class="pill p-green">新</span>：AI SDK v6 稳定 agent 类</li>
+        <li><b>StateGraph</b>：节点+边+状态机</li>
+        <li><b>StateSchema</b> <span class="pill p-green">新</span>：LangGraph.js 1.1 库无关状态定义</li>
+        <li><b>Durable Execution</b>：checkpoint / resume</li>
+        <li><b>DeltaChannel</b> <span class="pill p-green">新</span>：只存增量，降 checkpoint 开销</li>
+        <li><b>HITL / Interrupt</b>：人工审批闸门</li>
+      </ul>
+    </div>
+    <div class="map-card">
+      <h4>③ 多 Agent / 协议</h4>
+      <ul>
+        <li><b>Multi-Agent</b>：supervisor / swarm / 辩论</li>
+        <li><b>MCP 2026-07-28</b> <span class="pill p-green">新</span>：无状态核心、MRTR、CIMD</li>
+        <li><b>A2A v1.0</b> <span class="pill p-green">新</span>：签名 Agent Card、多租户</li>
+        <li><b>Send / Command</b>：并行 fanout / 跳转</li>
+        <li><b>DeepAgent</b>：长程自主 + 全 harness</li>
+        <li><b>Harness</b>：Agent 运行时/控制平面</li>
+      </ul>
+    </div>
+    <div class="map-card">
+      <h4>④ 知识 / 工程 / 安全</h4>
+      <ul>
+        <li><b>RAG</b>：检索增强生成全流程</li>
+        <li><b>GraphRAG 快照</b> <span class="pill p-green">新</span>：知识图可序列化复用</li>
+        <li><b>rerank()</b>：AI SDK v6 重排 API</li>
+        <li><b>Evals</b>：评估集 / LLM-as-judge</li>
+        <li><b>Observability</b>：trace / metric / log</li>
+        <li><b>Sandbox</b>：代码执行隔离</li>
+        <li><b>AGENTS.md / Skill</b> <span class="pill p-green">新</span>：AAIF 标准，60k+ 项目使用</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin-top:26px">核心概念详解（一句话 + 类比 + 技术映射）</h3>
+  <div class="grid2">
+    <div class="concept"><span class="term">Agent（智能体）</span><br>能<b>自主决策 + 调用工具 + 循环执行</b>直到完成目标的 LLM 程序。<br><span style="color:var(--muted)">类比：员工。映射：ToolLoopAgent / LangGraph Agent / Mastra Agent。</span></div>
+    <div class="concept"><span class="term">Tool / Function Calling</span><br>Agent 可用的「外部能力」，用 JSON Schema 声明。<br><span style="color:var(--muted)">类比：工具箱。映射：MCP Server、Zod-tool、needsApproval。</span></div>
+    <div class="concept"><span class="term">Prompt</span><br>给 LLM 的「指令 + 上下文 + 格式约束」。<b>项目级指令现由 AGENTS.md 承载</b>（AAIF 标准，60k+ 项目）。<br><span style="color:var(--muted)">三大件：System / Context / Output Schema。</span></div>
+    <div class="concept"><span class="term">Output API</span> <span class="pill p-green">v6+</span><br>AI SDK v6 起用 <span style="font-family:monospace;color:var(--brand2)">generateText({ output: Output.object({schema}) })</span>；<b>generateObject / streamObject 已废弃</b>。<br><span style="color:var(--muted)">类型：Output.object / array / choice / json / text。</span></div>
+    <div class="concept"><span class="term">StateGraph（状态图）</span><br>节点(步骤) + 边(转移) + 共享 State 的有向图。JS 端 1.1 起可用 <b>StateSchema</b>（兼容 Standard Schema / Zod）。<br><span style="color:var(--muted)">类比：流程图引擎。映射：LangGraph.js StateGraph。</span></div>
+    <div class="concept"><span class="term">Checkpoint / Resume</span><br>每步 State 持久化到 DB，崩溃可断点继续。1.2 起 <b>DeltaChannel</b> 只存增量降低开销。<br><span style="color:var(--muted)">生产须用 PostgresSaver / SqliteSaver / RedisSaver / MongoSaver；<b>MemorySaver 在 serverless 冷启动会丢失</b>。</span></div>
+    <div class="concept"><span class="term">HITL / Interrupt</span><br>关键步骤暂停等人审批，批准后携带新 State 恢复。AI SDK v6 提供 <b>needsApproval</b>（可静态或动态函数）。<br><span style="color:var(--muted)">⚠ resume 时节点从顶部重跑，interrupt 前的副作用必须幂等。</span></div>
+    <div class="concept"><span class="term">MCP 2026-07-28</span> <span class="pill p-green">新</span><br>工具「USB 标准」，<b>本版改为无状态协议核心</b>：无握手、无 Mcp-Session-Id，方法名走 Mcp-Method/Mcp-Name 头，server→client 用 MRTR。<br><span style="color:var(--muted)">扩展：Tasks、MCP Apps、EMA。弃用策略 12 个月窗口。</span></div>
+    <div class="concept"><span class="term">A2A v1.0</span> <span class="pill p-green">新</span><br>Agent 间互操作协议，Linux Foundation 治理。三层：数据模型 / 抽象操作 / 协议绑定。<br><span style="color:var(--muted)">与 MCP 区别：<b>MCP 在 agent 内部连工具，A2A 在 agent 之间通信</b>，生产系统两者都用。</span></div>
+    <div class="concept"><span class="term">RAG</span><br>检索知识 → 拼进 Prompt → 生成。AI SDK v6 内置 <b>rerank()</b>；Mastra 支持 <b>GraphRAG 快照序列化</b>避免每次重建。<br><span style="color:var(--muted)">流程：chunk → embed → store → retrieve → rerank → cite。</span></div>
+    <div class="concept"><span class="term">DeepAgent</span><br>「<b>全 harness</b>」——planning + context management + delegation 开箱即用；任何 LangGraph 图都可作为 sub-agent 接入。<br><span style="color:var(--muted)">v0.7 基础输入 token 降 65%。安全模型：trust the LLM，边界须在 tool/沙箱层强制。</span></div>
+    <div class="concept"><span class="term">Harness（运行时/控制面）</span><br>承载 Agent 执行的平台层：生命周期、队列、并发、资源、隔离、观测。<br><span style="color:var(--muted)">映射：LangGraph Server / LangSmith Deployment（原生支持 A2A & MCP）/ Mastra Server。</span></div>
+    <div class="concept"><span class="term">Sandbox</span><br>隔离环境执行不可信代码。<b>2026 选型更迭：Daytona 已闭源自托管不可用</b>。<br><span style="color:var(--muted)">E2B（Firecracker microVM）/ Modal（gVisor + GPU）/ 自托管 OpenSandbox·Microsandbox。</span></div>
+    <div class="concept"><span class="term">Evals / Observability</span><br>golden set + LLM-as-judge；trace + metric + cost。<br><span style="color:var(--muted)">LangSmith 2026-05 起核心迁移到 <b>SmithDB</b>（Rust 列式），核心体验最高快 15x。</span></div>
+  </div>
+  <div class="quote" style="margin-top:16px"><b>一句话理清关系：</b>MCP 让 Agent「会用工具」，A2A 让 Agent「会找同事」，RAG 是「给它看资料」，Prompt/AGENTS.md 是「教它做事」，Harness 是「给它办公室」，Sandbox 是「给它实验室」，Evals 是「给它 KPI」。</div>
+</section>
+
+<!-- 技术选型 -->
+<section>
+  <h2>三、技术选型（含 2026-09-02 核实版本）</h2>
+  <div class="card" style="padding:14px 16px">
+    <table>
+      <tr><th>技术</th><th>角色</th><th>TS 主栈选型</th><th>核实版本 / 关键事实</th><th>Python 对照</th></tr>
+      <tr><td><span class="pill p-brand">LangChain.js</span></td><td>LLM 抽象/工具/RAG 积木</td><td>@langchain/core</td><td><b>langchain 1.2.39</b>（2026-03-31），core 1.1.38；智能重试区分瞬时/确定性错误</td><td>langchain 1.3.0</td></tr>
+      <tr><td><span class="pill p-brand">LangGraph.js</span></td><td><b>主编排</b>（图+状态+checkpoint）</td><td>@langchain/langgraph</td><td><b>JS 1.2.9</b>（2026-04-16）；1.1.0 引入 StateSchema；MongoDBStore 1.3.0</td><td>langgraph 1.2.11</td></tr>
+      <tr><td><span class="pill p-green">Mastra</span></td><td>TS Agent/Workflow/Memory</td><td>@mastra/core</td><td><b>v1.62.0</b>（2026-08-26）；v1 需 Node 22.13+；支持 MCP 2026-07-28</td><td>—</td></tr>
+      <tr><td><span class="pill p-brand">Vercel AI SDK</span></td><td>模型接入/结构化输出/流式 UI</td><td>ai + @ai-sdk/*</td><td><b>v7.0.74</b>（ESM only）；v6 引入 ToolLoopAgent / Output API / needsApproval / rerank</td><td>—</td></tr>
+      <tr><td><span class="pill p-gold">MCP</span></td><td>工具标准化协议</td><td>@modelcontextprotocol/sdk</td><td><b>规范 2026-07-28</b>（无状态核心）；TS/Python/Go/C# Tier 1 SDK 已更新</td><td>mcp</td></tr>
+      <tr><td><span class="pill p-gold">A2A</span></td><td>Agent 互操作协议</td><td>a2a-js（官方 SDK）</td><td><b>v1.0.0</b>（2026-03-12 稳定）；5 个生产 SDK（Py/JS/Java/Go/.NET）</td><td>google-a2a</td></tr>
+      <tr><td><span class="pill p-pink">DeepAgent</span></td><td>长程自主研究 Agent</td><td>基于 LangGraph.js 自建 / deepagents</td><td><b>deepagents 0.7.8</b>（2026-08-20）；v0.7 输入 token 降 65%</td><td>deepagents</td></tr>
+      <tr><td>RAG</td><td>检索增强生成</td><td>LangChain.js retrieval + pgvector</td><td>AI SDK rerank()；Mastra GraphRAG serialize/deserialize</td><td>langchain retrieval</td></tr>
+      <tr><td>Prompt</td><td>指令/结构化输出</td><td>AI SDK Output API + Zod</td><td>项目级指令用 <b>AGENTS.md</b>（AAIF 标准，60k+ 项目）</td><td>—</td></tr>
+      <tr><td>Harness</td><td>运行时/控制面</td><td>LangGraph Server (JS) / Fastify</td><td>LangSmith Deployment 原生支持 <b>A2A & MCP</b></td><td>LangGraph Platform</td></tr>
+      <tr><td>Sandbox</td><td>代码隔离执行</td><td><b>E2B</b> / Modal</td><td>E2B Firecracker ~$0.05/vCPU-hr；Modal gVisor + GPU；自托管 OpenSandbox</td><td>—</td></tr>
+      <tr><td>Observability</td><td>trace/评测/监控</td><td>OTLP + LangFuse / Phoenix</td><td>LangSmith 2026-05 迁 <b>SmithDB</b>，最高快 15x；支持 OTel 双向</td><td>LangSmith</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--muted);margin:12px 0 0">版本为 2026-09-02 核实快照。生产锁定请用精确 npm 版本 + lock 文件 + 镜像 digest。<b>学习前请先核对官方 changelog，本表可能已滚动更新。</b></p>
+  </div>
+</section>
+
+<!-- 架构 -->
+<section>
+  <h2>四、目标系统架构（四层 · TS 主栈）</h2>
+  <div class="arch">
+    <span class="lay"><b>① 产品层（主战场 · TS）</b><br>Next.js App Router + AI SDK v7 控制台 · 项目/run/artifact/diff/审批/评测页 · React Flow 图调试 · SSE 增量渲染</span>
+    <span class="lay"><b>② 编排内核（TS · LangGraph.js）</b><br>Fastify gateway (OIDC/tenant) · LangGraph Server · <b>PostgresSaver</b> checkpointer · Redis locks/streams · 审批服务 · Mastra v1 Workflow</span>
+    <span class="lay"><b>③ 执行 / 工具层</b><br>Sandbox Workers（E2B / 自托管）· <b>MCP 2026-07-28</b> Gateway（无状态 / 头路由 / 审计）· <b>A2A v1.0</b> 对外协作 · Git/CI · 对象存储</span>
+    <span class="lay"><b>④ 可观测后端</b><br>OTLP Collector → LangFuse / Phoenix / LangSmith(SmithDB) · eval dataset · trace / metric / log 关联</span>
+  </div>
+
+  <h3 style="margin-top:22px">PRD → 代码 的状态图（顺序门控 + 有限循环）</h3>
+  <div class="flow">
+    <div class="node"><b>Product Analyst</b>拆解目标/用户/指标</div>
+    <span class="arrow">→</span>
+    <div class="node gate"><b>① 需求冻结</b>PO 审批</div>
+    <span class="arrow">→</span>
+    <div class="node"><b>Requirement Specifier</b>用户故事 + AC</div>
+    <span class="arrow">→</span>
+    <div class="node"><b>Architect</b>选型/ADR/风险</div>
+    <span class="arrow">→</span>
+    <div class="node gate"><b>② 架构/安全</b>审批</div>
+  </div>
+  <div class="flow">
+    <div class="node"><b>Planner</b>任务图 + 依赖</div>
+    <span class="arrow">→</span>
+    <div class="node"><b>Developer</b>沙箱补丁</div>
+    <span class="arrow">→</span>
+    <div class="node"><b>Reviewer + SAST</b>规范/安全</div>
+    <span class="arrow">→</span>
+    <div class="node gate"><b>③ QA Gate</b>build/test/evals</div>
+    <span class="arrow">→</span>
+    <div class="node gate"><b>④ 合并审批</b>PR/Deploy</div>
+  </div>
+  <p class="loop">↺ 回环规则：QA 失败 & 预算充足 → Developer；Architect 驳回 → Requirement；无预算 → 升级人工（防无限循环）</p>
+</section>
+
+<!-- 14周路线 -->
+<section>
+  <h2>五、14 周学习路线（已按最新版本修订）</h2>
+  <div class="card" style="padding:14px 16px">
+    <table class="week-table">
+      <tr><th>周</th><th>主题 / 目标</th><th>核心知识点（含 2026 新特性）</th><th>里程碑验收</th></tr>
+      <tr><td>W1</td><td>概念扫盲 + Agent 直觉</td><td>概念全图；LLM API、tool use、<b>Output API（非 generateObject）</b>、streaming、token/cost</td><td>Next.js + AI SDK v7 聊天/工具 UI；显示 trace 与 cost</td></tr>
+      <tr><td>W2</td><td><b>Prompt</b> + 结构化输出</td><td>system/context/few-shot、Zod schema、<b>AGENTS.md / SKILL.md 规范</b>、prompt injection 认知</td><td>PRD 解析器：非结构化 → 结构化 JSON；项目根目录 AGENTS.md 生效</td></tr>
+      <tr><td>W3</td><td><b>LangChain.js</b> + 工具链</td><td>Runnable、Tools、Memory、Retrievers；<b>needsApproval</b>；MCP 工具接入</td><td>LangChain.js 重构 W2；工具走 MCP；会话记忆可用</td></tr>
+      <tr><td>W4</td><td><b>LangGraph.js</b> 编排入门</td><td>StateGraph、<b>StateSchema</b>、条件路由、<b>Send 并行 fanout</b>、subgraph</td><td>三节点图 + 可视化状态流转</td></tr>
+      <tr><td>W5</td><td>Durable Execution</td><td>checkpointer（<b>PostgresSaver</b>）、interrupt + <b>Command.resume</b>、幂等、<b>retry policy（TS 端替代 Python-only 的 timeout/error_handler）</b></td><td>Postgres 存 state；kill worker 可恢复；审批暂停/恢复</td></tr>
+      <tr><td>W6</td><td><b>MCP 2026-07-28</b> 工具标准化</td><td><b>无状态请求</b>（无握手）、server/discover、<b>Mcp-Method/Mcp-Name 头路由</b>、MRTR、CIMD 授权、JSON Schema 2020-12</td><td>repo/Jira/search 封装为 MCP server；gateway 校验/限流/审计</td></tr>
+      <tr><td>W7</td><td><b>A2A v1.0</b> + 多 Agent</td><td>AgentCard（<b>签名 JWS</b>）、Task 生命周期、<b>三种绑定</b>、createSupervisor / createSwarm + createHandoffTool、预算控制</td><td>≥3 角色协作 trace；supervisor vs swarm 成本/质量对比</td></tr>
+      <tr><td>W8</td><td><b>RAG</b> 与知识治理</td><td>chunking、embedding、<b>rerank()</b>、citation、ACL、pgvector、<b>GraphRAG 快照</b></td><td>私有规范库问答；答案附 source；跨 tenant 检索为空</td></tr>
+      <tr><td>W9</td><td><b>DeepAgent</b> 长程自主</td><td>全 harness（planning + context mgmt + delegation）、递归子图、<b>backend protocol</b>、budget、终止条件</td><td>大任务自主拆分子任务执行；预算耗尽优雅停止</td></tr>
+      <tr><td>W10</td><td><b>Harness</b> 运行时/控制面</td><td>生命周期、队列、并发、资源、LangGraph Server、<b>TokenCostControl 成本治理</b></td><td>队列 + 并发限制 + 后台 run + 状态查询 + 成本上限</td></tr>
+      <tr><td>W11</td><td><b>Sandbox</b> + 安全加固</td><td>OAuth/OIDC、RBAC/RLS、最小权限、<b>E2B / 自托管 OpenSandbox</b>、egress 监控、prompt injection 红队</td><td>代码沙箱跑测试；写操作须批准；注入/越权被拦截</td></tr>
+      <tr><td>W12</td><td>Evals 与 CI 门禁</td><td>golden dataset、LLM-as-judge、regression、experiment、<b>LangSmith Engine / SmithDB</b></td><td>30+ 样例；eval 不通过 CI 失败</td></tr>
+      <tr><td>W13</td><td>可观测性（生产分水岭）</td><td>OTel trace/metric/log、context propagation、<b>W3C Trace Context</b>、LangFuse、cost 归因</td><td>单 trace 覆盖 UI→API→graph→tool→worker；p95/error/cost dashboard</td></tr>
+      <tr><td>W14</td><td>生产化 + 复盘</td><td>Docker/K8s、canary、rollback、SLO、on-call、文档</td><td>staging 连续跑 50 任务；故障演练；runbook/SLO/回滚演示</td></tr>
+    </table>
+  </div>
+
+  <div class="grid3" style="margin-top:16px">
+    <div class="card"><h3>阶段 A · W1–2</h3><p><b>概念 + Prompt</b><br>扫盲 + Output API + AGENTS.md</p></div>
+    <div class="card"><h3>阶段 B · W3–6</h3><p><b>编排内核</b><br>LangChain → LangGraph → Durable → MCP 新规范</p></div>
+    <div class="card"><h3>阶段 C · W7–9</h3><p><b>协作 + 知识 + 自主</b><br>A2A v1 + RAG + DeepAgent</p></div>
+    <div class="card"><h3>阶段 D · W10</h3><p><b>Harness</b><br>运行时 + 成本治理</p></div>
+    <div class="card"><h3>阶段 E · W11–12</h3><p><b>安全 + 评测</b><br>Sandbox + Evals</p></div>
+    <div class="card"><h3>阶段 F · W13–14</h3><p><b>生产化</b><br>观测 + 部署 + SLO</p></div>
+  </div>
+</section>
+
+<!-- 里程碑 -->
+<section>
+  <h2>六、最终验收标准（必须全部可演示）</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>功能验收</h3>
+      <ul>
+        <li>PRD 输入 → PR/候选变更完整流程演示</li>
+        <li>每阶段产出 JSON Schema artifact</li>
+        <li><b>4 个关键 gate</b> 可批准/拒绝，阻止未批准写操作</li>
+        <li>多 Agent（<b>MCP 2026-07-28 + A2A v1.0</b>）：≥3 角色成功 trace</li>
+        <li>DeepAgent 长程任务 + RAG 知识增强演示</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>可靠性 / 安全验收</h3>
+      <ul>
+        <li>随机停止 worker → 从最近 checkpoint 继续</li>
+        <li>Tenant A 无法访问 Tenant B 代码/知识</li>
+        <li>离线 + 在线 eval 可在 CI 复现</li>
+        <li>MCP 审计 / Sandbox egress 监控 / secret / 注入红队</li>
+        <li>trace / metric / log / cost / rollback / runbook 完整</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 学习策略 -->
+<section>
+  <h2>七、给你的专属学习策略</h2>
+  <div class="timeline">
+    <div class="tl-item"><b>概念先行 1 周（W1）</b><br>先把第二节概念地图读透做成 cheatsheet。Agent 技术的混乱大多源于概念混用，地图建立后学每项技术都很快。</div>
+    <div class="tl-item"><b>TS 一栈到底，Python 只做对照</b><br>全链路 TypeScript。Python 只在 W5（per-node timeout / error_handler 是 Python-only）、W9（DeepAgent backend protocol）做对标实验，不切换主语言。</div>
+    <div class="tl-item"><b>按「价值密度」排序</b><br>Prompt/Output API/StateGraph/Checkpoint（核心）→ MCP/A2A（互操作）→ RAG/DeepAgent（增强）→ Harness/Sandbox（生产化）。<b>不要把 RAG 当入门</b>。</div>
+    <div class="tl-item"><b>警惕版本时效性（本版最大风险）</b><br>MCP 2026-07-28、A2A v1.0、AI SDK v7、Mastra v1 都是<b>近期破坏性更新</b>。学每项技术前先开官方 changelog 核对；教程代码若出现 initialize 握手、generateObject、Mastra 0.x API，说明已过时，直接跳过。</div>
+    <div class="tl-item"><b>每个阶段交付「可运行系统」</b><br>W2 解析器、W4 状态图、W5 持久化、W6 MCP gateway、W9 DeepAgent、W12 eval gate。宁可不完美，不可只停留在教程。</div>
+    <div class="tl-item"><b>优先级铁律（时间不足时）</b><br>保四弃多：<b>checkpoint · approval · eval gate · sandbox</b>。这四项是「企业级」分界线。</div>
+  </div>
+</section>
+
+<!-- 风险 -->
+<section>
+  <h2>八、风险与降级方案（含 2026 新增）</h2>
+  <div class="card">
+    <table>
+      <tr><th>风险</th><th>触发信号</th><th>降级动作</th></tr>
+      <tr><td><b class="bad">教程过时</b> <span class="pill p-pink">2026 新增</span></td><td>教程出现 initialize 握手 / generateObject / Mastra 0.x / A2A v0.3</td><td>立即停看，切官方文档 + changelog；本方案第三节已列核实版本</td></tr>
+      <tr><td><b class="bad">Node 版本不足</b> <span class="pill p-pink">2026 新增</span></td><td>Mastra v1 要求 Node 22.13.0+；AI SDK v7 需 ESM</td><td>用 nvm/fnm 升到 Node 22 LTS；Vite/Next 配置确认 ESM</td></tr>
+      <tr><td><b class="bad">沙箱自托管失效</b> <span class="pill p-pink">2026 新增</span></td><td>Daytona 2026-06 已闭源，self-host 不可用</td><td>改用 E2B / Modal 托管，或自托管 OpenSandbox / Microsandbox</td></tr>
+      <tr><td>时间不足</td><td>连续 2 周投入 &lt;6h</td><td>砍 W7 swarm 辩论、W8 GraphRAG、W9 递归子图，保四项 P0</td></tr>
+      <tr><td>概念卡住</td><td>W2 末仍分不清 MCP/A2A</td><td>回到概念卡，做最小对照实验（一个 MCP server + 一个 A2A 调用）</td></tr>
+      <tr><td>LangGraph.js 能力不足</td><td>W5 关键特性 TS 缺失</td><td>该特性用 Python 对标验证思路，主栈 TS 自建等价实现</td></tr>
+      <tr><td>成本失控</td><td>单 run &gt;$5</td><td>小模型 + prompt cache + max_loop + 复用 embedding；Mastra TokenCostControl</td></tr>
+      <tr><td>过度设计</td><td>角色/协议越来越多但跑不通</td><td>回到「单 supervisor + 有限回环」，先打通最小闭环</td></tr>
+    </table>
+  </div>
+</section>
+
+<footer>
+  v2 · 技术版本经 2026-09-02 联网核实（官方文档 / changelog / Linux Foundation 公告）<br>
+  主要来源：MCP Specification 2026-07-28 · A2A v1.0.0 Spec · LangChain JS Changelog · LangGraph Changelog · Vercel AI SDK v6/v7 · Mastra Changelog · deepagents PyPI · LangChain 官方博客<br>
+  <b>Agent 生态迭代极快，学习前请再次核对官方 changelog；生产锁定用精确版本 + lock 文件。</b>
+</footer>
+
+</div>
+</body>
+</html>

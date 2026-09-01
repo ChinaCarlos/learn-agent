@@ -1,0 +1,109 @@
+---
+title: 八、风险与降级方案
+description: 教程过时、Node 版本、沙箱闭源等 2026 风险的识别流与成本熔断 Demo
+---
+
+import { PlanHeader, Callout, Arch, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { ChapterSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="第八章 · 降级"
+  items={[
+    { label: '课时', value: '2–3 h' },
+    { label: '难度', value: '中' },
+    { label: '产出', value: '熔断器' },
+    { label: '对应周', value: '全程' },
+  ]}
+/>
+
+<ChapterSwitcher current="08-risks" />
+
+先写降级，再写功能。企业级 Agent 最常见的失败不是「模型不够聪明」，而是教程过时、成本失控、循环停不下来。
+
+## 学习目标
+
+1. 对每条风险都能说出触发信号和 10 分钟内的降级动作。
+2. 实现一个 Token/美元熔断器，后面 W10 会接到 Harness。
+3. 预演「连续两周不足 6 小时」时砍哪些内容。
+
+## 风险处理流
+
+<Mermaid
+  title="风险 → 信号 → 动作"
+  chart={`
+flowchart TD
+  R1["教程过时"] -->|"initialize / generateObject"| A1["停看, 切官方文档"]
+  R2["Node 过低"] -->|"Mastra 报引擎版本"| A2["fnm 升到 22 LTS"]
+  R3["沙箱自托管失效"] -->|"Daytona self-host"| A3["改 E2B / OpenSandbox"]
+  R4["时间不足"] -->|"两周 < 6h"| A4["砍 swarm / GraphRAG / 递归"]
+  R5["概念卡住"] -->|"W2 末混用 MCP/A2A"| A5["最小对照实验"]
+  R6["成本失控"] -->|"单 run > $5"| A6["小模型 + cache + max_loop"]
+  R7["过度设计"] -->|"角色越来越多跑不通"| A7["回到单 supervisor"]
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '学习风险', body: '教程过时、Node 版本、概念卡住、时间不足。动作都是减范围，不是加班硬刚。' },
+    { title: '运行时风险', body: '成本失控、无限循环、LangGraph.js 某特性缺失。用预算、max_loop、Python 对标补齐。' },
+    { title: '供应链风险', body: 'Daytona 闭源。沙箱选型必须有 Plan B。' },
+    { title: '设计风险', body: '角色/协议膨胀。回到单 supervisor + 有限回环。' },
+  ]}
+/>
+
+## 详细学习方案
+
+<Session when="40 min" title="把风险表打印成桌面壁纸">
+  只保留「触发信号」列。真正出问题时你不会想读长文。
+</Session>
+
+<Session when="50 min" title="实现熔断 Demo">
+  下面的 `BudgetGuard` 之后会变成 W10 的 TokenCostControl 雏形。
+</Session>
+
+<Session when="30 min" title="写一份 6 小时周的裁剪清单">
+  保留 W4 图、W5 恢复、W6 MCP、W11 sandbox、W12 eval。其他标为 stretch。
+</Session>
+
+<Callout tone="danger" title="过度设计是静默杀手">
+  角色和协议越来越多但跑不通时，立刻回到「单 supervisor + 有限回环」，先打通最小闭环。
+</Callout>
+
+<DemoBox title="单 run 成本熔断" goal="演示风险表里「单 run > $5」如何变成代码，而不是事后看账单后悔。">
+
+```ts
+export class BudgetGuard {
+  constructor(
+    private readonly limitUsd: number,
+    private spent = 0,
+  ) {}
+
+  charge(tokens: number, usdPerMillion: number) {
+    const add = (tokens / 1_000_000) * usdPerMillion;
+    if (this.spent + add > this.limitUsd) {
+      throw new Error(`budget_exceeded: ${this.spent.toFixed(4)} + ${add.toFixed(4)} > ${this.limitUsd}`);
+    }
+    this.spent += add;
+    return this.spent;
+  }
+}
+
+const guard = new BudgetGuard(5);
+guard.charge(200_000, 5); // 约 $1，通过
+```
+
+验收：把 `limitUsd` 改成 `0.01` 再跑必须抛错。W9 / W10 的「预算耗尽优雅停止」都调用同一类。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '8 条风险都能说出触发信号',
+    'BudgetGuard 单测覆盖超限',
+    '有一份时间不足时的裁剪清单',
+    '沙箱 Plan B 已写进 VERSIONS.md',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w01">开始 W1 详细学习方案</PlanCTA>

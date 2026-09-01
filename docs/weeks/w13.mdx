@@ -1,0 +1,113 @@
+---
+title: W13 可观测性
+description: 第十三周学习方案：OTel、W3C Trace Context、成本归因与端到端 trace Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 F · 第 13 周"
+  items={[
+    { label: '日期', value: '11-26 → 12-02' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'OpenTelemetry' },
+    { label: '里程碑', value: '端到端单 trace' },
+  ]}
+/>
+
+<WeekSwitcher current="w13" />
+
+生产分水岭：没有统一 trace，出了问题只能猜。目标是一条 trace 覆盖 UI → API → graph → tool → worker，并有 p95 / error / cost 看板。
+
+## 本周目标
+
+1. 全链路注入 W3C `traceparent`。
+2. 节点、MCP 调用、沙箱 run 都是 span。
+3. cost 作为 span attribute，能按 tenant 聚合。
+4. 导出到 LangFuse / Phoenix / 任意 OTLP collector 之一。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: 'SDK', desc: 'Node OTel' },
+    { title: '传播', desc: 'traceparent' },
+    { title: 'Span', desc: 'graph/tool/sandbox' },
+    { title: '看板', desc: 'p95/error/cost' },
+  ]}
+/>
+
+<Mermaid
+  title="Trace 覆盖范围"
+  chart={`
+flowchart LR
+  UI["浏览器 fetch<br/>traceparent"] --> API["Fastify span"]
+  API --> G["graph.invoke span"]
+  G --> N["node:planner"]
+  N --> MCP["mcp:repo.search"]
+  MCP --> SB["sandbox:npm test"]
+  G --> Cost["attr:cost_usd"]
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '产品层', body: '把 server 返回的 traceId 展示在 run 详情，方便演示。' },
+    { title: '网关', body: '解析/生成 Trace Context，写入日志关联字段。' },
+    { title: 'Worker', body: '从队列 payload 取出 context，继续同一 trace，不要新开根 span。' },
+    { title: '后端', body: 'OTLP Collector → 你选的产品。LangSmith 已迁 SmithDB，可选。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="Fastify 自动埋点">
+  每个 /runs 请求一个 server span。确认响应头或 body 带回 traceId。
+</Session>
+<Session when="Fri 2.5h" title="图与工具 span">
+  自定义 instrumentation：节点名、tool 名、tenant。禁止把 prompt 全文当 attribute（脱敏）。
+</Session>
+<Session when="Sat 4h" title="跨进程传播">
+  队列消息带 `traceparent`。worker 内 MCP 与 sandbox 都是子 span。
+</Session>
+<Session when="Sun 3h" title="三个数字">
+  看板或日志统计：p95 延迟、error rate、usd/run。没有 Grafana 也可用 SQL。
+</Session>
+
+<Callout tone="warn" title="不要把密钥和原文 PRD 打进 span">
+  观测是为了排障，不是再建一个泄密通道。截断 + 哈希即可。
+</Callout>
+
+<DemoBox title="W3C Trace Context 解析" goal="先把传播做对，再谈用哪家观测产品。">
+
+```ts
+export function parseTraceparent(header?: string) {
+  if (!header) return null;
+  const [version, traceId, spanId, flags] = header.split('-');
+  if (version !== '00' || traceId.length !== 32 || spanId.length !== 16) {
+    return null;
+  }
+  return { version, traceId, spanId, flags };
+}
+
+export function childTraceparent(parent: { traceId: string; flags: string }, childSpanId: string) {
+  return `00-${parent.traceId}-${childSpanId}-${parent.flags}`;
+}
+```
+
+验收：从 UI 复制一个 header，API 与 worker 日志里 `traceId` 必须相同。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '一次用户点击能在后端找到同一 traceId',
+    'graph / tool / sandbox 有子 span',
+    'cost 可按 tenant 求和',
+    '敏感字段已脱敏',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w14">下一周：生产化与复盘</PlanCTA>

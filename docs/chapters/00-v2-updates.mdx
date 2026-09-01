@@ -1,0 +1,137 @@
+---
+title: 〇、v2 更新要点
+description: 2026 年 MCP 无状态、A2A v1.0、AI SDK v7、Mastra v1 等破坏性变更及对照学习法
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { ChapterSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="第〇章 · 先扫雷"
+  items={[
+    { label: '课时', value: '3–4 h' },
+    { label: '难度', value: '低' },
+    { label: '产出', value: '过时 API 对照表' },
+    { label: '对应周', value: 'W1 前' },
+  ]}
+/>
+
+<ChapterSwitcher current="00-v2-updates" />
+
+不是版本号微调，是有破坏性变更。旧教程里对应部分已经失效。本章目标：用一个下午建立「看到过时 API 立刻停」的反射。
+
+## 学习目标
+
+1. 能口述 MCP 2026-07-28 相对旧规范的 4 个断裂点。
+2. 能判断一段代码该不该继续看（generateObject / initialize / Mastra 0.x）。
+3. 把本机 Node 升到 22.13+，确认 ESM。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: '读 6 条变更', desc: '只记断裂点' },
+    { title: '对照旧代码', desc: '标红过时 API' },
+    { title: '改一处 Demo', desc: 'Output API 替换' },
+    { title: '写对照表', desc: '贴在仓库 README' },
+  ]}
+/>
+
+<Mermaid
+  title="遇到教程时的判断流"
+  chart={`
+flowchart TD
+  Start["打开教程"] --> Q1{"出现 generateObject<br/>或 initialize 握手?"}
+  Q1 -->|是| Stop["立即停看"]
+  Stop --> Official["改读官方 changelog"]
+  Q1 -->|否| Q2{"Mastra 0.x<br/>或 A2A v0.3?"}
+  Q2 -->|是| Stop
+  Q2 -->|否| Q3{"Node 低于 22.13?"}
+  Q3 -->|是| Upgrade["nvm/fnm 升级"]
+  Q3 -->|否| Learn["按本站周计划继续"]
+  Upgrade --> Learn
+  Official --> Learn
+`}
+/>
+
+## 架构位置
+
+这些变更改的是协议与 SDK 边界，不是产品 UI。
+
+<Arch
+  layers={[
+    { title: '产品层', body: 'AI SDK v7 为 ESM only；Output API 取代 generateObject；ToolLoopAgent / needsApproval / rerank 从 v6 起可用。' },
+    { title: '编排内核', body: 'LangGraph 1.2 有 DeltaChannel；per-node timeout / error_handler 仍是 Python-only，TS 用 retry policy。Mastra v1 要求 Node 22.13+。' },
+    { title: '执行 / 工具层', body: 'MCP 改为无状态：无握手、无 Mcp-Session-Id，方法名走 HTTP 头，server→client 用 MRTR。A2A 直接用 v1.0。' },
+    { title: '运行时约束', body: 'Daytona 2026-06 闭源，自托管不可用。沙箱改 E2B / Modal / OpenSandbox。' },
+  ]}
+/>
+
+## 详细学习方案
+
+<Session when="60 min" title="精读 6 条破坏性变更">
+  对照根目录方案第〇节，只抄「影响」列到笔记：W1–2 不要学 generateObject；W6 不要学握手；W7 不要学 v0.3；W11 不要选 Daytona 自托管。
+</Session>
+
+<Session when="60 min" title="打开官方 changelog 做书签">
+  MCP Specification 2026-07-28、A2A v1.0.0、Vercel AI SDK v6/v7、Mastra Changelog、LangGraph JS 1.2。每份只看 Breaking Changes 标题。
+</Session>
+
+<Session when="60 min" title="环境闸门">
+  `node -v` 必须 ≥ 22.13.0。新建空目录确认 `"type": "module"`，并用 `import` 而不是 `require("ai")`。
+</Session>
+
+<Session when="45 min" title="改写 Demo">
+  把下面过时代码改成 Output API，提交到学习仓库的 `ch00-output-api/`。
+</Session>
+
+<Callout tone="danger" title="六条必须记住的断裂">
+  MCP 无状态；A2A v1.0 稳定；AI SDK v7 ESM only；Mastra v1 要 Node 22.13+；LangGraph timeouts 为 Python-only；Daytona 不能自托管。
+</Callout>
+
+<DemoBox title="用 Output API 解析任务，而不是 generateObject" goal="同一输入，过时 API 与现行 API 对照。把过时版本留在注释里当反例。">
+
+过时写法（看到就删）：
+
+```ts
+// BAD: generateObject 已废弃，不要学、不要抄
+// const { object } = await generateObject({ model, schema, prompt })
+```
+
+现行写法（W1–2 直接用这个）：
+
+```ts
+import { generateText, Output } from 'ai';
+import { z } from 'zod';
+
+const TaskSchema = z.object({
+  title: z.string(),
+  owner: z.enum(['frontend', 'backend', 'qa']),
+  hours: z.number().int().positive(),
+});
+
+export async function parseTask(prompt: string) {
+  const { output, usage } = await generateText({
+    model: 'openai/gpt-4.1-mini',
+    output: Output.object({ schema: TaskSchema }),
+    prompt,
+  });
+  return { task: output, tokens: usage?.totalTokens ?? 0 };
+}
+```
+
+本地验收：输入「用 4 小时做登录页」应得到 `owner: "frontend"`，并且控制台能打印 token。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '笔记本上有 6 条断裂点的「旧 → 新」对照',
+    '本机 Node ≥ 22.13.0，项目为 ESM',
+    '能独立写出 Output.object 调用',
+    '收藏 5 份官方 changelog',
+  ]}
+/>
+
+<PlanCTA href="/chapters/01-stack">下一章：栈策略</PlanCTA>

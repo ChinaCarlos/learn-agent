@@ -1,0 +1,114 @@
+---
+title: W12 Evals 与 CI 门禁
+description: 第十二周学习方案：golden dataset、LLM-as-judge、回归实验，以及 CI eval gate Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 E · 第 12 周"
+  items={[
+    { label: '日期', value: '11-19 → 11-25' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'Evals' },
+    { label: '里程碑', value: 'CI 因 eval 失败' },
+  ]}
+/>
+
+<WeekSwitcher current="w12" />
+
+没有评测的 Agent 只能演示不能进化。本周要 30+ 样例，eval 不通过则 CI 失败。LangSmith 2026-05 起核心迁 SmithDB，可用 LangFuse / Phoenix 替代。
+
+## 本周目标
+
+1. 建立 ≥30 条 golden set：输入、期望约束、标签。
+2. 离线 eval 可本地复现。
+3. 至少一种 LLM-as-judge（相关性 / 是否引用 source）。
+4. GitHub Actions 或本地 `pnpm test:eval` 失败码为 1。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: '收集', desc: '30 条样例' },
+    { title: '契约', desc: 'schema judge' },
+    { title: '语义', desc: 'LLM judge' },
+    { title: 'CI', desc: '阈值门禁' },
+  ]}
+/>
+
+<Mermaid
+  title="评测门禁"
+  chart={`
+flowchart TD
+  PR["Pull Request"] --> CI["CI"]
+  CI --> Off["离线 eval 30+"]
+  Off --> J1["schema / citation"]
+  Off --> J2["LLM-as-judge"]
+  J1 --> Thr{"通过率 ≥ 阈值?"}
+  J2 --> Thr
+  Thr -->|否| Fail["CI 红"]
+  Thr -->|是| Merge["允许进 QA gate"]
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '数据', body: 'eval set 进 git（脱敏）。不要只有生产日志。' },
+    { title: '运行', body: '同一 graph、固定 seed 模型或允许小模型，但阈值分开。' },
+    { title: '产品', body: '评测页看历史 experiment，不必本周做完 UI。' },
+    { title: '观测衔接', body: '每次 eval 写 trace id，W13 用来对齐。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="建 dataset">
+  从 W2 PRD、W8 问答各抽 15 条。含 5 条负例：注入、无资料、跨租户。
+</Session>
+<Session when="Fri 2.5h" title="确定性 judge">
+  schema、是否 abort、citation 是否子集。这些不该用 LLM 判。
+</Session>
+<Session when="Sat 4h" title="LLM-as-judge">
+  只判「是否依据资料」。给出 0/1 和一句话理由。
+</Session>
+<Session when="Sun 3h" title="接到 CI">
+  故意弄坏一条 prompt，确认 CI 变红，再修好。录屏。
+</Session>
+
+<Callout tone="info" title="离线优于在线">
+  在线 eval 波动大，CI 以离线为主。在线抽样放到 staging，W14 再跑。
+</Callout>
+
+<DemoBox title="CI 可复现的 eval runner" goal="把第 6 章的 evalGate 扩成数据集循环。">
+
+```ts
+import { evalGate } from '../ch06/evalGate';
+
+type Case = { id: string; output: unknown; expectPass: boolean };
+
+export function runEval(cases: Case[]) {
+  const failed = cases.filter(c => evalGate(c.output).pass !== c.expectPass);
+  if (failed.length) {
+    console.error(failed.map(f => f.id).join(','));
+    process.exit(1);
+  }
+}
+```
+
+验收：插入一条 `expectPass: true` 但 `stories: []` 的用例，命令行退出码为 1。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    '≥30 条样例进仓库',
+    '确定性 judge 覆盖 citation/schema',
+    'LLM judge 有固定 prompt',
+    'CI 能因 eval 失败',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w13">下一周：可观测性</PlanCTA>

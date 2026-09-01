@@ -1,0 +1,12 @@
+[
+  { "type": "file", "name": "index", "label": "如何使用本方案" },
+  { "type": "file", "name": "00-v2-updates", "label": "〇、v2 更新要点" },
+  { "type": "file", "name": "01-stack", "label": "一、栈策略" },
+  { "type": "file", "name": "02-concepts", "label": "二、核心概念" },
+  { "type": "file", "name": "03-tech", "label": "三、技术选型" },
+  { "type": "file", "name": "04-architecture", "label": "四、目标架构" },
+  { "type": "file", "name": "05-roadmap", "label": "五、14 周路线" },
+  { "type": "file", "name": "06-acceptance", "label": "六、验收标准" },
+  { "type": "file", "name": "07-strategy", "label": "七、学习策略" },
+  { "type": "file", "name": "08-risks", "label": "八、风险与降级" }
+]

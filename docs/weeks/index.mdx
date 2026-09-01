@@ -1,0 +1,63 @@
+---
+title: 14 周学习总览
+description: 企业级 Agent 14 周路线图、六阶段划分、每周主题与里程碑验收对照
+---
+
+import { PlanHeader, Callout, CheckList } from '../../theme/components/DocsUI';
+import { PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="执行手册"
+  items={[
+    { label: '跨度', value: '09-03 → 12-09' },
+    { label: '周容量', value: '10–15 h' },
+    { label: '阶段', value: 'A → F' },
+    { label: '保底', value: '四项 P0' },
+  ]}
+/>
+
+按周执行，不要按兴趣跳着学。价值密度顺序是：Prompt / Output API / StateGraph / Checkpoint → MCP / A2A → RAG / DeepAgent → Harness / Sandbox。**不要把 RAG 当入门。**
+
+<Mermaid
+  title="六阶段总流程"
+  chart={`
+flowchart TD
+  A["阶段 A W1-2<br/>概念 + Prompt"] --> B["阶段 B W3-6<br/>编排内核"]
+  B --> C["阶段 C W7-9<br/>协作 + 知识 + 自主"]
+  C --> D["阶段 D W10<br/>Harness"]
+  D --> E["阶段 E W11-12<br/>安全 + 评测"]
+  E --> F["阶段 F W13-14<br/>观测 + 生产"]
+`}
+/>
+
+<Callout tone="info" title="怎么用每周页面">
+  每周页面都按同一结构：目标 → 流程图 → 架构位置 → 课时表 → Demo → 验收。先看流程图再写代码，避免一上来复制过时教程。
+</Callout>
+
+| 周 | 主题 | 里程碑 |
+| --- | --- | --- |
+| [W1](/weeks/w01) | 概念扫盲 + Agent 直觉 | Next.js + AI SDK v7 聊天/工具 UI，显示 trace 与 cost |
+| [W2](/weeks/w02) | Prompt + 结构化输出 | PRD 解析器；根目录 AGENTS.md 生效 |
+| [W3](/weeks/w03) | LangChain.js + 工具链 | 工具走 MCP；会话记忆可用 |
+| [W4](/weeks/w04) | LangGraph.js 入门 | 三节点图 + 可视化状态流转 |
+| [W5](/weeks/w05) | Durable Execution | Postgres 存 state；kill worker 可恢复 |
+| [W6](/weeks/w06) | MCP 2026-07-28 | repo/search 封装为 MCP server + gateway |
+| [W7](/weeks/w07) | A2A v1.0 + 多 Agent | ≥3 角色协作 trace |
+| [W8](/weeks/w08) | RAG 与知识治理 | 答案带 source；跨 tenant 检索为空 |
+| [W9](/weeks/w09) | DeepAgent | 大任务拆分子任务；预算耗尽停止 |
+| [W10](/weeks/w10) | Harness | 队列 + 并发 + 成本上限 |
+| [W11](/weeks/w11) | Sandbox + 安全 | 沙箱跑测试；注入/越权被拦截 |
+| [W12](/weeks/w12) | Evals 与 CI | 30+ 样例；eval 失败则 CI 失败 |
+| [W13](/weeks/w13) | 可观测性 | 单 trace 覆盖 UI→graph→tool |
+| [W14](/weeks/w14) | 生产化 | staging 50 任务 + 回滚演示 |
+
+<CheckList
+  items={[
+    '连续两周投入不足 6 小时：砍 W7 swarm、W8 GraphRAG、W9 递归子图',
+    '单 run 成本超过 5 美元：切小模型、prompt cache、max_loop',
+    'W2 结束仍分不清 MCP 与 A2A：停下来做最小对照实验',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w01">进入 W1 详细方案</PlanCTA>

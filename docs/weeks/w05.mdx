@@ -1,0 +1,122 @@
+---
+title: W5 Durable Execution
+description: 第五周学习方案：PostgresSaver、interrupt 与 Command.resume、幂等、retry policy Demo
+---
+
+import { PlanHeader, Callout, Arch, Flow, DemoBox, Session, CheckList } from '../../theme/components/DocsUI';
+import { WeekSwitcher, PlanCTA } from '../../theme/components/Switcher';
+import { Mermaid } from '../../theme/components/Mermaid';
+
+<PlanHeader
+  kicker="阶段 B · 第 5 周"
+  items={[
+    { label: '日期', value: '10-01 → 10-07' },
+    { label: '容量', value: '12–15 h' },
+    { label: '技术', value: 'Checkpoint' },
+    { label: '里程碑', value: 'kill 后恢复' },
+  ]}
+/>
+
+<WeekSwitcher current="w05" />
+
+企业级分界线第一项：进程死了，任务还能接着跑。TS 端没有 Python 的 per-node timeout / error_handler，用 retry policy 与幂等补齐。
+
+## 本周目标
+
+1. checkpointer 换成 PostgresSaver（本地可用 Docker Postgres）。
+2. 审批节点 `interrupt`，批准后 `Command.resume`。
+3. kill worker 后用同一 `thread_id` 恢复。
+4. interrupt 前的副作用可重入。
+
+## 学习流程
+
+<Flow
+  steps={[
+    { title: 'Postgres', desc: 'Saver 替换 Memory' },
+    { title: '幂等副作用', desc: '先设计再写' },
+    { title: 'interrupt', desc: '写操作闸门' },
+    { title: '杀进程', desc: 'resume 验证' },
+  ]}
+/>
+
+<Mermaid
+  title="审批与恢复"
+  chart={`
+flowchart TD
+  N["Developer 节点"] --> Side{"副作用是否幂等?"}
+  Side -->|否| Fix["先写幂等键"]
+  Side -->|是| Int["interrupt 等待审批"]
+  Int --> Kill["此时 kill worker"]
+  Kill --> Boot["新进程加载 PostgresSaver"]
+  Boot --> Resume["Command.resume"]
+  Resume --> N
+`}
+/>
+
+<Arch
+  layers={[
+    { title: '编排内核', body: 'LangGraph Server 或自托管 worker 都读同一 Postgres。' },
+    { title: '存储', body: 'PostgresSaver 存 checkpoint；Redis 锁防双 worker 同 thread。本周 Redis 可后做。' },
+    { title: '产品层', body: '审批页读取 interrupted state，提交 resume payload。' },
+    { title: 'Python 对照（可选）', body: 'notebook 里看 per-node timeout / error_handler，结论写回 TS retry policy。' },
+  ]}
+/>
+
+## 课时表
+
+<Session when="Thu 2.5h" title="Docker Postgres + Saver">
+  把 W4 图 compile 时传入 checkpointer。重启 API 进程，invoke 同一 thread 应看到旧 state。
+</Session>
+<Session when="Fri 2.5h" title="幂等设计">
+  任何「创建 PR / 发评论」带 `idempotencyKey = threadId + node + step`。无键不许写。
+</Session>
+<Session when="Sat 4h" title="interrupt + 审批页">
+  写文件节点前暂停。UI 两个按钮：批准带注释、拒绝带原因。
+</Session>
+<Session when="Sun 3h" title="杀进程演练">
+  卡在 interrupt 时 `kill -9`。拉起服务，thread 仍在等待。批准后继续。录屏即本周验收。
+</Session>
+
+<Callout tone="danger" title="resume 从节点顶部重跑">
+  若你在 interrupt 之前已经 insert 过一行 DB，重跑会再 insert 一次。所以必须幂等，不能只靠「我记得跑过了」。
+</Callout>
+
+<DemoBox title="可恢复的审批闸门" goal="用最小结构模拟 interrupt/resume。接上官方 Command.resume 时保持同一语义。">
+
+```ts
+type Run = { threadId: string; node: string; status: 'running' | 'interrupted' | 'done'; cursor: number };
+
+const db = new Map<string, Run>();
+
+export function checkpoint(run: Run) {
+  db.set(run.threadId, run);
+}
+
+export function killAndRestore(threadId: string) {
+  return db.get(threadId); // 模拟新进程只认识 Postgres
+}
+
+export function resume(threadId: string) {
+  const run = db.get(threadId);
+  if (!run || run.status !== 'interrupted') {
+    throw new Error('not_interrupted');
+  }
+  run.status = 'running';
+  return run;
+}
+```
+
+验收：`checkpoint` → 丢掉内存里的 worker 变量 → `killAndRestore` 仍能 `resume`。然后再换成官方 PostgresSaver。
+
+</DemoBox>
+
+<CheckList
+  items={[
+    'Postgres 中能查到 checkpoint 行',
+    'kill -9 后 thread 可继续',
+    '写操作有幂等键',
+    '审批拒绝不会继续写文件',
+  ]}
+/>
+
+<PlanCTA href="/weeks/w06">下一周：MCP 2026-07-28</PlanCTA>
