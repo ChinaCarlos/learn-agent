@@ -1,0 +1,10 @@
+# packages/
+
+This directory is reserved for future learning project packages.
+
+Add any TypeScript/JavaScript learning packages here, e.g.:
+- packages/demo-agent
+- packages/mastra-playground
+- packages/langchain-examples
+
+Each package should have its own package.json.
