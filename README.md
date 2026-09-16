@@ -48,6 +48,23 @@ pnpm preview
 
 默认开发地址见终端输出（一般为 `http://localhost:3000`）。
 
+## GitHub Pages 部署
+
+站点自动部署到 GitHub Pages：**https://ChinaCarlos.github.io/learn-agent/**
+
+### 工作流程
+
+- **PR 到 main**: 仅构建验证，不部署
+- **Push 到 main**: 构建并自动部署到 GitHub Pages
+
+### 首次启用 Pages
+
+需要在 GitHub 仓库设置中启用 Pages：
+
+1. 进入仓库 **Settings** → **Pages**
+2. **Source** 选择 **GitHub Actions**
+3. 保存后，下次 push 到 main 分支将自动部署
+
 ## 添加学习项目
 
 在 `packages/` 目录下创建新包，例如：

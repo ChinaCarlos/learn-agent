@@ -3,6 +3,7 @@ import { defineConfig } from '@rspress/core';
 
 export default defineConfig({
   root: path.join(__dirname, 'docs'),
+  base: '/learn-agent/',
   lang: 'zh',
   title: 'Agent 学习指南',
   description: '面向资深前端的 TypeScript 主栈企业级 Agent 学习文档',
