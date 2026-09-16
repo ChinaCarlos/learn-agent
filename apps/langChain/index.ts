@@ -29,11 +29,11 @@ const getWeather = tool(
   },
 );
 
+// 密钥不要写进代码。运行前执行：export DEEPSEEK_API_KEY=你的密钥
+// initChatModel / DeepSeek 会自动读取环境变量 DEEPSEEK_API_KEY
 const model = await initChatModel("deepseek:deepseek-chat", {
   temperature: 0.5,
   timeout: 10000,
-  // 运行前设置：export DEEPSEEK_API_KEY=sk-xxxx
-  apiKey: process.env.DEEPSEEK_API_KEY,
 });
 
 const agent = createAgent({
